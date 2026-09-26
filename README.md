@@ -20,12 +20,12 @@ This repository is not intended to be a line-for-line source translation. The ru
 <table>
   <tr>
     <td width="50%" align="center">
-      <img width="859" height="484" alt="image" src="https://github.com/user-attachments/assets/abfebcde-d9fe-4ff5-a13c-660b0b8587c7" />
+      <img width="859" height="484" alt="image" src="https://github.com/user-attachments/assets/e97e4dfd-9539-42a2-adb3-cf7a141254e0" />
       <br />
       <sub><em>Main Menu</em></sub>
     </td>
     <td width="50%" align="center">
-      <img width="860" height="486" alt="image" src="https://github.com/user-attachments/assets/afeee26e-0013-42d3-8229-193a5ed6d3df" />
+      <img width="860" height="486" alt="image" src="https://github.com/user-attachments/assets/e1554a9f-8f18-415f-93d8-05e3d5c5dc33" />
       <br />
       <sub><em>Video Options in Legacy UI (Optifine Options here!)</em></sub>
     </td>
