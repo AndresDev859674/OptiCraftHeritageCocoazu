@@ -233,8 +233,8 @@ file(GLOB_RECURSE ALL_GAME_SOURCES "src/*.cpp" "src/*.c")
 
 # Exclude from others platforms
 if(NOT WIN32)
-    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/linux/.*")
-    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Linux\\.cpp$")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/win32/.*")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Win32\\.cpp$")
 else()
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/linux/.*")
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Linux\\.cpp$")
@@ -269,10 +269,7 @@ if(PC_LEGACY_BUILD)
     target_compile_definitions(OptiCraft PRIVATE PC_LEGACY_BUILD=1)
 endif()
 
-# Link-Time Optimization for Release. The port is built from hundreds of tiny
-# cross-translation-unit accessors (getBlockId, getSavedLightValue, Chunk /
-# NibbleArray getters) called millions of times per frame in the hot loops;
-# without LTO the compiler cannot inline them across .cpp boundaries.
+# Link-Time Optimization for Release.
 option(OPTICRAFT_ENABLE_LTO "Enable Link-Time Optimization for Release builds" OFF)
 if(OPTICRAFT_ENABLE_LTO)
     include(CheckIPOSupported)
@@ -330,7 +327,6 @@ if(WIN32)
             $<$<NOT:$<CONFIG:Release>>:-g>
         )
         if(PC_LEGACY_BUILD)
-            # Tune scheduling for Bonnell without raising the inherited SSE2 ISA baseline.
             target_compile_options(OptiCraft PRIVATE
                 $<$<CONFIG:Release>:-O2>
                 -mtune=bonnell
@@ -358,8 +354,7 @@ elseif(UNIX)
     target_compile_definitions(OptiCraft PRIVATE MC_LINUX)
 endif()
 
-# Put every configuration in a predictable folder instead of beside CMake's
-# generated files. Explicit per-config properties avoid an extra Debug/Debug.
+# Put every configuration in a predictable folder instead of beside CMake's generated files.
 foreach(config Debug Release RelWithDebInfo MinSizeRel)
     string(TOUPPER "${config}" config_upper)
     set_target_properties(OptiCraft PROPERTIES
