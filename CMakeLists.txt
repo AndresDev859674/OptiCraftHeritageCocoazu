@@ -386,4 +386,3 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source Files"
     FILES ${OPTICRAFT_COMMON_SOURCES} ${OPTICRAFT_HEADERS}
 )
 source_group("Third Party\\minizip" FILES ${OPTICRAFT_MINIZIP_SOURCES})
-```[cite: 3]
