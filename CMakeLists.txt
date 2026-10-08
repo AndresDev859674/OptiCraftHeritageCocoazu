@@ -204,10 +204,10 @@ file(GLOB_RECURSE OPTICRAFT_HEADERS CONFIGURE_DEPENDS
 
 if(WIN32)
     opticraft_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]linux[/\\]")
-elseif(UNIX)
+elseif(UNIX OR APPLE)
     opticraft_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]win32[/\\]")
 else()
-    message(FATAL_ERROR "OptiCraft currently supports Windows and Linux only")
+    message(FATAL_ERROR "OptiCraft currently supports Windows, Linux, and macOS only")
 endif()
 
 # Each public platform facade has exactly one implementation in this target.
@@ -235,6 +235,7 @@ file(GLOB_RECURSE ALL_GAME_SOURCES "src/*.cpp" "src/*.c")
 if(NOT WIN32)
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/win32/.*")
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Win32\\.cpp$")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/render/d3d9/.*")
 else()
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/linux/.*")
     list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Linux\\.cpp$")
@@ -350,7 +351,7 @@ if(WIN32)
             $<$<CONFIG:Release>:-s>
         )
     endif()
-elseif(UNIX)
+elseif(UNIX OR APPLE)
     target_compile_definitions(OptiCraft PRIVATE MC_LINUX)
 endif()
 

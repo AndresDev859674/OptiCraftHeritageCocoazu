@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Windows x64 (MinGW Cross-Compilation desde Linux) ───────────────
-  build-windows-mingw:
+  # ── Windows x64 (MinGW) ──────────────────────────────────────────────
+  build-windows-x64-mingw:
     timeout-minutes: 45
     name: Windows x64 (MinGW)
     runs-on: ubuntu-26.04
@@ -33,8 +33,6 @@ jobs:
             git clone --depth 1 https://github.com/libsdl-org/SDL_net.git external/SDL_net
             git -C external/SDL_net fetch --depth 1 origin b1085eed744eab0c894a5306d822c9241bcf0228
             git -C external/SDL_net checkout FETCH_HEAD
-          else
-            echo "SDL_net already present"
           fi
 
       - name: Install build tools & MinGW
@@ -46,9 +44,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ccache
-          key: ccache-windows-mingw-${{ github.run_id }}
+          key: ccache-windows-x64-mingw-${{ github.run_id }}
           restore-keys: |
-            ccache-windows-mingw-
+            ccache-windows-x64-mingw-
 
       - name: Configure ccache
         run: ccache --max-size=2G && ccache --set-config=compression=true
@@ -91,6 +89,82 @@ jobs:
         if: always()
         run: ccache --show-stats
 
+  # ── Windows Win32 / Windows 7 Target (MinGW) ─────────────────────────
+  build-windows-win32-win7:
+    timeout-minutes: 45
+    name: Windows Win32 (Windows 7 MinGW)
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: Clone SDL_net (pinned)
+        run: |
+          if [ ! -f external/SDL_net/CMakeLists.txt ]; then
+            echo "Cloning SDL_net..."
+            git clone --depth 1 https://github.com/libsdl-org/SDL_net.git external/SDL_net
+            git -C external/SDL_net fetch --depth 1 origin b1085eed744eab0c894a5306d822c9241bcf0228
+            git -C external/SDL_net checkout FETCH_HEAD
+          fi
+
+      - name: Install build tools & MinGW x86
+        run: |
+          sudo apt update
+          sudo apt install -y ninja-build ccache mingw-w64
+
+      - name: Cache ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-windows-win32-${{ github.run_id }}
+          restore-keys: |
+            ccache-windows-win32-
+
+      - name: Configure ccache
+        run: ccache --max-size=2G && ccache --set-config=compression=true
+
+      - name: Configure
+        run: |
+          cmake -B build/win32 -G "Ninja" \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc \
+            -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
+            -DSDL_PIPEWIRE=OFF \
+            -DPC_LEGACY_BUILD=ON \
+            -DSDL2NET_SAMPLES=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src -D_WIN32_WINNT=0x0601" \
+            "-DCMAKE_C_FLAGS=-D_WIN32_WINNT=0x0601" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build/win32 -j$(nproc)
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          EXE_PATH=$(find build/win32 bin -type f -name "OptiCraft.exe" -not -path "*/CMakeFiles/*" | head -n 1)
+          cp "$EXE_PATH" dist/OptiCraft-windows-win32.exe
+          tar -C dist -czf OptiCraft-windows-win32.tar.gz OptiCraft-windows-win32.exe
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: opticraft-windows-win32
+          path: OptiCraft-windows-win32.tar.gz
+          if-no-files-found: error
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats
+
   # ── Linux x64 GCC ────────────────────────────────────────────────────
   build-linux-x64-gcc:
     timeout-minutes: 45
@@ -110,8 +184,6 @@ jobs:
             git clone --depth 1 https://github.com/libsdl-org/SDL_net.git external/SDL_net
             git -C external/SDL_net fetch --depth 1 origin b1085eed744eab0c894a5306d822c9241bcf0228
             git -C external/SDL_net checkout FETCH_HEAD
-          else
-            echo "SDL_net already present"
           fi
 
       - name: Install build tools, SDL2 & SDL2_net
@@ -138,7 +210,6 @@ jobs:
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
-            --preset linux-release \
             "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
@@ -157,6 +228,92 @@ jobs:
         with:
           name: opticraft-linux-x64-gcc
           path: OptiCraft-linux-x64-gcc.tar.gz
+          if-no-files-found: error
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats
+
+  # ── Linux ARM64 / ARMhf GCC Cross-Compilation ────────────────────────
+  build-linux-arm-gcc:
+    timeout-minutes: 45
+    name: Linux ${{ matrix.arch }} GCC
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            compiler_prefix: aarch64-linux-gnu
+            pkg_arch: arm64
+          - arch: armhf
+            compiler_prefix: arm-linux-gnueabihf
+            pkg_arch: armhf
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: Clone SDL_net (pinned)
+        run: |
+          if [ ! -f external/SDL_net/CMakeLists.txt ]; then
+            echo "Cloning SDL_net..."
+            git clone --depth 1 https://github.com/libsdl-org/SDL_net.git external/SDL_net
+            git -C external/SDL_net fetch --depth 1 origin b1085eed744eab0c894a5306d822c9241bcf0228
+            git -C external/SDL_net checkout FETCH_HEAD
+          fi
+
+      - name: Install Toolchain & Cross Headers
+        run: |
+          sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
+          sudo apt update
+          sudo apt install -y ninja-build ccache gcc-${{ matrix.compiler_prefix }} g++-${{ matrix.compiler_prefix }} \
+            libgl1-mesa-dev:${{ matrix.pkg_arch }} libx11-dev:${{ matrix.pkg_arch }} libasound2-dev:${{ matrix.pkg_arch }}
+
+      - name: Cache ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-linux-${{ matrix.arch }}-
+
+      - name: Configure ccache
+        run: ccache --max-size=2G && ccache --set-config=compression=true
+
+      - name: Configure
+        run: |
+          cmake -B build/linux-${{ matrix.arch }} -G "Ninja" \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.arch }} \
+            -DCMAKE_C_COMPILER=${{ matrix.compiler_prefix }}-gcc \
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler_prefix }}-g++ \
+            -DSDL_PIPEWIRE=OFF \
+            -DPC_LEGACY_BUILD=ON \
+            -DCMAKE_BUILD_TYPE=Debug \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build/linux-${{ matrix.arch }} -j$(nproc)
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          BIN_PATH=$(find build/linux-${{ matrix.arch }} bin -type f -name "OptiCraft" -not -path "*/CMakeFiles/*" | head -n 1)
+          cp "$BIN_PATH" dist/OptiCraft-linux-${{ matrix.arch }}-gcc
+          tar -C dist -czf OptiCraft-linux-${{ matrix.arch }}-gcc.tar.gz OptiCraft-linux-${{ matrix.arch }}-gcc
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: opticraft-linux-${{ matrix.arch }}-gcc
+          path: OptiCraft-linux-${{ matrix.arch }}-gcc.tar.gz
           if-no-files-found: error
 
       - name: ccache stats
@@ -196,8 +353,6 @@ jobs:
             git clone --depth 1 https://github.com/libsdl-org/SDL_net.git external/SDL_net
             git -C external/SDL_net fetch --depth 1 origin b1085eed744eab0c894a5306d822c9241bcf0228
             git -C external/SDL_net checkout FETCH_HEAD
-          else
-            echo "SDL_net already present"
           fi
 
       - name: Install build tools & SDL2
