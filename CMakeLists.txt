@@ -186,7 +186,11 @@ if(NOT SDL2NET_FOUND AND NOT TARGET SDL2_net)
     add_subdirectory(external/SDL_net EXCLUDE_FROM_ALL)
 endif()
 
-find_package(OpenGL REQUIRED)
+if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(OpenGL QUIET)
+else()
+    find_package(OpenGL REQUIRED)
+endif()
 find_package(Threads REQUIRED)
 
 # Build the desktop target from common code plus the PC tree. Foreign console
@@ -306,9 +310,12 @@ target_link_libraries(OptiCraft PRIVATE
     SDL2-static
     SDL2_net
     zlibstatic
-    OpenGL::GL
     Threads::Threads
 )
+
+if(TARGET OpenGL::GL)
+    target_link_libraries(OptiCraft PRIVATE OpenGL::GL)
+endif()
 
 if(WIN32)
     target_compile_definitions(OptiCraft PRIVATE

@@ -47,8 +47,8 @@ jobs:
 
       - name: Install build tools & MinGW
         run: |
-          sudo apt update
-          sudo apt install -y ninja-build ccache ${{ matrix.pkg_name }}
+          sudo apt-get update
+          sudo apt-get install -y ninja-build ccache ${{ matrix.pkg_name }}
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -146,14 +146,17 @@ jobs:
 
       - name: Install build tools & dependencies
         run: |
-          sudo apt update
+          if [ "${{ matrix.multilib }}" = "true" ]; then
+            sudo dpkg --add-architecture i386
+          fi
+          sudo apt-get update
           EXTRA_PKGS=""
           if [ "${{ matrix.multilib }}" = "true" ]; then
             EXTRA_PKGS="gcc-multilib g++-multilib libgl-dev:i386 libx11-dev:i386 libxext-dev:i386 libasound2-dev:i386"
           else
             EXTRA_PKGS="libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libasound2-dev"
           fi
-          sudo apt install -y ninja-build ccache $EXTRA_PKGS
+          sudo apt-get install -y ninja-build ccache $EXTRA_PKGS
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -236,8 +239,8 @@ jobs:
 
       - name: Install Toolchain
         run: |
-          sudo apt update
-          sudo apt install -y ninja-build ccache \
+          sudo apt-get update
+          sudo apt-get install -y ninja-build ccache \
             gcc-${{ matrix.compiler_prefix }} g++-${{ matrix.compiler_prefix }}
 
       - name: Cache ccache
