@@ -118,6 +118,9 @@ private:
 	void evictWiiMeshCache(EntityLiving *entityliving);
 #endif
 	void enqueueRendererUpdate(WorldRenderer *worldrenderer);
+#if PLATFORM_PC
+	void updateDynamicTorchLight();
+#endif
 #if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 	void enqueueRendererUpdatePriority(WorldRenderer *worldrenderer);
 #endif
@@ -203,6 +206,13 @@ private:
 	int_t renderersSkippingRenderPass = 0;
 	int_t worldRenderersCheckIndex = 0;
 	std::vector<WorldRenderer *> renderBatchRenderers;
+#if PLATFORM_PC
+	World *dynamicTorchLightWorld = nullptr;
+	int_t dynamicTorchLightX = 0;
+	int_t dynamicTorchLightY = 0;
+	int_t dynamicTorchLightZ = 0;
+	bool dynamicTorchLightActive = false;
+#endif
 #if PLATFORM_PC_LEGACY
 	std::vector<std::uint8_t> pcLegacyVisibilityEntryMasks;
 	std::vector<int_t> pcLegacyVisibilityQueue;

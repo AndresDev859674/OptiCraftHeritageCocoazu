@@ -21,15 +21,18 @@ protected:
 
 private:
     void syncControls();
-    void setCreativeMode(bool creative);
+    void rebuildPage();
+    void setGameMode(int_t gameType);
     void setDay();
     void killEntities();
 
     LegacyOptionCheckbox *showFpsCheckbox;
     LegacyOptionCheckbox *extendedInfoCheckbox;
+    LegacyOptionCheckbox *noClipCheckbox;
     LegacyOptionCheckbox *keepInventoryCheckbox;
     LegacyGuiButton *setDayButton;
     LegacyGuiButton *gameModeButton;
     LegacyGuiButton *killEntitiesButton;
     bool multiplayer;
+    int_t currentPage;
 };

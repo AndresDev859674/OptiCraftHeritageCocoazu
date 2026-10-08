@@ -79,6 +79,10 @@ public:
 
 private:
 	int_t updateCounter;
+	int_t debugHudRefreshCounter;
+	std::vector<std::string> debugHudLeftLines;
+	std::vector<std::string> debugHudCoordinateValues;
+	std::vector<std::string> debugHudRightLines;
 	std::string recordPlaying;
 	int_t recordPlayingUpFor;
 	bool field_22065_l;        // record playing with color effect
@@ -86,6 +90,10 @@ private:
 	bool isScrolled;
 #if PLATFORM_PC_LEGACY
 	int_t pcLegacyHudDisplayLists;
+	int_t pcLegacyDebugHudDisplayList;
+	int_t pcLegacyDebugHudWidth;
+	unsigned int pcLegacyDebugHudFontRevision;
+	bool pcLegacyDebugHudValid;
 	int_t pcLegacyHudWidth;
 	int_t pcLegacyHudHeight;
 	int_t pcLegacyHotbarItem;

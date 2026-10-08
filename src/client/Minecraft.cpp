@@ -1828,10 +1828,10 @@ void Minecraft::runTick()
         while (gameSettings->keyBindDrop->isPressed())
             thePlayer->dropCurrentItem();
 
-        while (isMultiplayerWorld() && gameSettings->keyBindChat->isPressed())
+        while (gameSettings->keyBindChat->isPressed())
             displayGuiScreen(new GuiChat());
 
-        if (isMultiplayerWorld() && currentScreen == nullptr &&
+        if (currentScreen == nullptr &&
             (lwjgl::Keyboard::isKeyDown(lwjgl::Keyboard::KEY_SLASH) ||
              lwjgl::Keyboard::isKeyDown(lwjgl::Keyboard::KEY_DIVIDE)))
         {
@@ -2661,8 +2661,7 @@ bool Minecraft::isDebugInfoEnabled()
 
 bool Minecraft::lineIsCommand(const std::string &s)
 {
-    (void)s;
-    return false;
+    return !s.empty() && s[0] == '/';
 }
 
 NetClientHandler *Minecraft::getSendQueue()

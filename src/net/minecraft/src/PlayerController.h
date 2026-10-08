@@ -14,6 +14,7 @@ class PlayerController
 public:
 	PlayerController(Minecraft *minecraft);
 	virtual ~PlayerController() = default;
+	static PlayerController *createForGameType(Minecraft *minecraft, int_t gameType);
 
 	virtual void onWorldChanged(World *world);
 	virtual void clickBlock(int_t i, int_t j, int_t k, int_t l);
@@ -41,6 +42,7 @@ public:
 	virtual void onContainerClosed(int_t windowId, EntityPlayer *player);
 	virtual bool isNotCreative();
 	virtual bool isInCreativeMode();
+	virtual bool isSpectatorMode() const;
 	virtual bool extendedReach();
 	virtual void sendSlotPacket(ItemStack *itemstack, int_t slot);
 	virtual void sendPacketDropItem(ItemStack *itemstack);

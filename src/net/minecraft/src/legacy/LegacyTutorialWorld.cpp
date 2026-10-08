@@ -136,9 +136,7 @@ bool play(Minecraft *mc, std::string &errorMessage)
     }
 
     delete mc->playerController;
-    mc->playerController = info->getGameType() == 0
-        ? static_cast<PlayerController *>(new PlayerControllerSP(mc))
-        : static_cast<PlayerController *>(new PlayerControllerCreative(mc));
+    mc->playerController = PlayerController::createForGameType(mc, info->getGameType());
 
     Minecraft::WorldLoadOptions loadOptions;
     loadOptions.naturalMobSpawningEnabled = false;

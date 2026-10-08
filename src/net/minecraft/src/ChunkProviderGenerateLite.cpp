@@ -27,10 +27,12 @@
 #include "BiomeGenBase.h"
 #include "LiteTerrainShape.h"
 #include "World.h"
+#include "WorldInfo.h"
 #include "WorldChunkManager.h"
 #include "Block.h"
 #include "java/Random.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace
@@ -55,7 +57,7 @@ namespace
 		long_t seed;
 
 		explicit LiteHeightNoise(long_t worldSeed)
-			: seed(worldSeed)
+		: seed(worldSeed)
 		{
 			Random rand(worldSeed);
 			for (int_t i = 0; i < 256; i++)
@@ -98,24 +100,24 @@ namespace
 		// the caller can reuse it as the surface-depth noise instead of running
 		// a separate 3D octave stack for the same column.
 		float surfaceYPrepared(int_t localX, int_t localZ, const LiteTerrain::BiomeShape &biome,
-			float &detailOut) const
-		{
-			const AxisSample *columnContinental = continentalX[localX];
-			const AxisSample *rowContinental = continentalZ[localZ];
-			const AxisSample *columnDetail = detailX[localX];
-			const AxisSample *rowDetail = detailZ[localZ];
-			const float continental = (perlin2Prepared(columnContinental[0], rowContinental[0])
-				+ perlin2Prepared(columnContinental[1], rowContinental[1]) * 0.5f
-				+ perlin2Prepared(columnContinental[2], rowContinental[2]) * 0.25f
-				+ perlin2Prepared(columnContinental[3], rowContinental[3]) * 0.125f) / 1.875f;
-			const float detail = (perlin2Prepared(columnDetail[0], rowDetail[0])
-				+ perlin2Prepared(columnDetail[1], rowDetail[1]) * 0.5f) / 1.5f;
-			detailOut = detail;
+							   float &detailOut) const
+							   {
+								   const AxisSample *columnContinental = continentalX[localX];
+								   const AxisSample *rowContinental = continentalZ[localZ];
+								   const AxisSample *columnDetail = detailX[localX];
+								   const AxisSample *rowDetail = detailZ[localZ];
+								   const float continental = (perlin2Prepared(columnContinental[0], rowContinental[0])
+								   + perlin2Prepared(columnContinental[1], rowContinental[1]) * 0.5f
+								   + perlin2Prepared(columnContinental[2], rowContinental[2]) * 0.25f
+								   + perlin2Prepared(columnContinental[3], rowContinental[3]) * 0.125f) / 1.875f;
+								   const float detail = (perlin2Prepared(columnDetail[0], rowDetail[0])
+								   + perlin2Prepared(columnDetail[1], rowDetail[1]) * 0.5f) / 1.5f;
+								   detailOut = detail;
 
-			const float base = (float)PLATFORM_HEIGHTMAP_BASE_HEIGHT;
-			const float amp = (float)PLATFORM_HEIGHTMAP_AMPLITUDE;
-			return LiteTerrain::surfaceHeight(base, amp, continental, detail, biome);
-		}
+								   const float base = (float)PLATFORM_HEIGHTMAP_BASE_HEIGHT;
+								   const float amp = (float)PLATFORM_HEIGHTMAP_AMPLITUDE;
+								   return LiteTerrain::surfaceHeight(base, amp, continental, detail, biome);
+							   }
 
 	private:
 		unsigned char perm[512];
@@ -184,9 +186,9 @@ namespace
 			const int_t bb = perm[perm[x.cell + 1] + z.cell + 1];
 
 			const float x1 = lerpf(x.fadeValue, grad2(aa, x.fraction, z.fraction),
-				grad2(ba, x.fraction - 1.0f, z.fraction));
+								   grad2(ba, x.fraction - 1.0f, z.fraction));
 			const float x2 = lerpf(x.fadeValue, grad2(ab, x.fraction, z.fraction - 1.0f),
-				grad2(bb, x.fraction - 1.0f, z.fraction - 1.0f));
+								   grad2(bb, x.fraction - 1.0f, z.fraction - 1.0f));
 			return lerpf(z.fadeValue, x1, x2);
 		}
 	};
@@ -194,11 +196,11 @@ namespace
 	// One generator per world.  PS2 runs a single world at a time, so a lazily
 	// (re)built instance keyed on the world seed is enough and avoids growing the
 	// ChunkProviderGenerate layout / disturbing its RNG draw order.
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	thread_local LiteHeightNoise *g_liteNoise = nullptr;
-#else
+	#else
 	LiteHeightNoise *g_liteNoise = nullptr;
-#endif
+	#endif
 
 	LiteHeightNoise *liteNoiseFor(long_t seed)
 	{
@@ -236,7 +238,7 @@ void ChunkProviderGenerate::generateTerrainHeightmap(int_t i, int_t j, byte_t *a
 		generatedTemperatures.resize(static_cast<std::size_t>(chunkBiomeCount));
 
 	constexpr biome_noise_real_t inverseBiomeFixedPoint =
-		static_cast<biome_noise_real_t>(1.0f / 65536.0f);
+	static_cast<biome_noise_real_t>(1.0f / 65536.0f);
 	for (int_t localX = 0; localX < 16; ++localX)
 	{
 		for (int_t localZ = 0; localZ < 16; ++localZ)
@@ -250,7 +252,7 @@ void ChunkProviderGenerate::generateTerrainHeightmap(int_t i, int_t j, byte_t *a
 			biomesForGeneration[chunkIndex] = biome;
 
 			biome_noise_real_t temperature =
-				static_cast<biome_noise_real_t>(biome->getIntTemperature()) * inverseBiomeFixedPoint;
+			static_cast<biome_noise_real_t>(biome->getIntTemperature()) * inverseBiomeFixedPoint;
 			if (temperature > static_cast<biome_noise_real_t>(1.0f))
 				temperature = static_cast<biome_noise_real_t>(1.0f);
 			generatedTemperatures[chunkIndex] = temperature;
@@ -285,11 +287,11 @@ void ChunkProviderGenerate::generateTerrainHeightmap(int_t i, int_t j, byte_t *a
 		{
 			latticeShape[latticeX][latticeZ] = LiteTerrain::blendBiomeShape(
 				(latticeX << latticeShift) + biomeMargin,
-				(latticeZ << latticeShift) + biomeMargin,
-				[this, biomeStride](int_t x, int_t z) -> const LiteTerrain::BiomeBlendSample &
-				{
-					return liteBiomeSamples[static_cast<std::size_t>(z * biomeStride + x)];
-				});
+																			(latticeZ << latticeShift) + biomeMargin,
+																			[this, biomeStride](int_t x, int_t z) -> const LiteTerrain::BiomeBlendSample &
+																			{
+																				return liteBiomeSamples[static_cast<std::size_t>(z * biomeStride + x)];
+																			});
 		}
 	}
 
@@ -303,6 +305,13 @@ void ChunkProviderGenerate::generateTerrainHeightmap(int_t i, int_t j, byte_t *a
 	// abyte0 is a fresh 32768-zero buffer, so air (0) above the terrain needs no
 	// writes.  Block index layout matches replaceBlocksForBiome():
 	//   index = (l*16 + k)*128 + y , worldX = i*16 + l , worldZ = j*16 + k
+	const bool isLimited = false;
+	const int_t sizeType = 0;
+	const float rInner = sizeType == 2 ? 390.0f : 88.0f;
+	const float rOuter = sizeType == 2 ? 420.0f : 118.0f;
+	const float rInnerSq = rInner * rInner;
+	const float rOuterSq = rOuter * rOuter;
+
 	for (int_t l = 0; l < 16; l++)
 	{
 		const int_t latticeX = l >> latticeShift;
@@ -319,7 +328,56 @@ void ChunkProviderGenerate::generateTerrainHeightmap(int_t i, int_t j, byte_t *a
 				shape00, shape10, shape01, shape11, fractionX, fractionZ);
 
 			float detail = 0.0f;
-			int_t h = (int_t)noise->surfaceYPrepared(l, k, biome, detail);
+			float rawHeight = noise->surfaceYPrepared(l, k, biome, detail);
+			int_t h = (int_t)rawHeight;
+			if (isLimited)
+			{
+				const int_t worldBlockX = JavaArithmetic::intAdd(chunkBlockX, l);
+				const int_t worldBlockZ = JavaArithmetic::intAdd(chunkBlockZ, k);
+				const float dx = static_cast<float>(worldBlockX);
+				const float dz = static_cast<float>(worldBlockZ);
+				const float distSq = dx * dx + dz * dz;
+
+				if (distSq < rInnerSq)
+				{
+					// Central land: elevate terrestrial ground to Y=68..74 (MCPE 0.6.0 authentic elevation)
+					// and ensure interior land stays above sea level (63).
+					#if PLATFORM_PS2
+					// On PS2, normalize surface terrain to settle at Y=62..64 (within subchunk 3: Y=48..63)
+					// avoiding crossing the subchunk seam at Y=64 unless it's a hill/mountain.
+					if (biome.baseHeight >= 0.0f && rawHeight < 62.0f)
+					{
+						rawHeight = 62.0f + (rawHeight - 58.0f) * 0.25f;
+					}
+					#else
+					if (biome.baseHeight >= 0.0f)
+					{
+						rawHeight += 4.5f;
+						if (rawHeight < 64.0f)
+							rawHeight = 64.0f + (rawHeight - 60.0f) * 0.25f;
+					}
+					#endif
+				}
+				else if (distSq < rOuterSq)
+				{
+					// Coastal slope down to beach (Y=64..65) and shallow water
+					const float dist = std::sqrt(distSq);
+					const float t = (dist - rInner) * (1.0f / 30.0f);
+					#if PLATFORM_PS2
+					const float targetLand = rawHeight;
+					#else
+					const float targetLand = rawHeight + 4.5f * (1.0f - t);
+					#endif
+					const float targetOcean = 54.0f + detail * 2.0f;
+					rawHeight = targetLand * (1.0f - t) + targetOcean * t;
+				}
+				else
+				{
+					// Outer perimeter: ocean floor submerged at Y=52..56 under Y=63 water
+					rawHeight = 52.0f + detail * 2.0f;
+				}
+				h = (int_t)rawHeight;
+			}
 			if (h < 1)   h = 1;
 			if (h > 120) h = 120;
 
@@ -371,7 +429,7 @@ void ChunkProviderGenerate::replaceBlocksForBiomeHeightmap(byte_t *blocks, Biome
 			const int_t surfaceY = liteTerrainHeight[columnIndex] & 0xff;
 
 			const terrain_noise_real_t depthRandom =
-				static_cast<terrain_noise_real_t>(rand.nextDoubleFloat());
+			static_cast<terrain_noise_real_t>(rand.nextDoubleFloat());
 			const int_t depth = JavaArithmetic::floatToInt(
 				stoneNoise[columnIndex] / static_cast<terrain_noise_real_t>(3.0f)
 				+ static_cast<terrain_noise_real_t>(3.0f)

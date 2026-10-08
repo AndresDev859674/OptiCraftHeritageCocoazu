@@ -255,7 +255,17 @@ void GuiScreen::mouseMovedOrUp(int_t x, int_t y, int_t button)
 {
 	if (selectedButton != nullptr && button == 0)
 	{
-		selectedButton->mouseReleased(x, y);
+		bool selectedButtonStillPresent = false;
+		for (GuiButton *candidate : controlList)
+		{
+			if (candidate == selectedButton)
+			{
+				selectedButtonStillPresent = true;
+				break;
+			}
+		}
+		if (selectedButtonStillPresent)
+			selectedButton->mouseReleased(x, y);
 		selectedButton = nullptr;
 	}
 }

@@ -31,7 +31,7 @@ namespace
     {
     public:
         explicit ChunkLocalStructureAvoidanceScope(World *worldValue)
-            : world(worldValue), active(worldValue != nullptr && worldValue->isChunkLocalDecorationActive())
+        : world(worldValue), active(worldValue != nullptr && worldValue->isChunkLocalDecorationActive())
         {
             if (active)
                 world->setChunkLocalDecorationStructureAvoidance(true);
@@ -68,7 +68,7 @@ const char *BiomeDecorator::stageName(DecorationStage stage)
         "Done"
     };
     static_assert(sizeof(names) / sizeof(names[0]) ==
-                  static_cast<int>(DecorationStage::Done) + 1,
+    static_cast<int>(DecorationStage::Done) + 1,
                   "Decoration stage names must match DecorationStage");
 
     const int index = static_cast<int>(stage);
@@ -78,29 +78,29 @@ const char *BiomeDecorator::stageName(DecorationStage stage)
 }
 
 BiomeDecorator::BiomeDecorator(BiomeGenBase *biomeValue)
-    : generateLakes(true), currentWorld(nullptr), randomGenerator(nullptr),
-      chunk_X(0), chunk_Z(0), biome(biomeValue), decorationStage(DecorationStage::Done),
-      stopStage(DecorationStage::Done),
-      decorationIndex(0), treeCount(0), clayGen(new WorldGenClay(4)),
-      sandGen(new WorldGenSand(7, Block::sand->blockID)),
-      gravelAsSandGen(new WorldGenSand(6, Block::gravel->blockID)),
-      dirtGen(new WorldGenMinable(Block::dirt->blockID, 32)),
-      gravelGen(new WorldGenMinable(Block::gravel->blockID, 32)),
-      coalGen(new WorldGenMinable(Block::oreCoal->blockID, 16)),
-      ironGen(new WorldGenMinable(Block::oreIron->blockID, 8)),
-      goldGen(new WorldGenMinable(Block::oreGold->blockID, 8)),
-      redstoneGen(new WorldGenMinable(Block::oreRedstone->blockID, 7)),
-      diamondGen(new WorldGenMinable(Block::oreDiamond->blockID, 7)),
-      lapisGen(new WorldGenMinable(Block::oreLapis->blockID, 6)),
-      plantYellowGen(new WorldGenFlowers(Block::plantYellow->blockID)),
-      plantRedGen(new WorldGenFlowers(Block::plantRed->blockID)),
-      mushroomBrownGen(new WorldGenFlowers(Block::mushroomBrown->blockID)),
-      mushroomRedGen(new WorldGenFlowers(Block::mushroomRed->blockID)),
-      bigMushroomGen(new WorldGenBigMushroom()), reedGen(new WorldGenReed()),
-      cactusGen(new WorldGenCactus()), waterlilyGen(new WorldGenWaterlily()),
-      waterlilyPerChunk(0), treesPerChunk(0), flowersPerChunk(2), grassPerChunk(1),
-      deadBushPerChunk(0), mushroomsPerChunk(0), reedsPerChunk(0), cactiPerChunk(0),
-      sandPerChunk(1), sandPerChunk2(3), clayPerChunk(1), bigMushroomsPerChunk(0)
+: generateLakes(true), currentWorld(nullptr), randomGenerator(nullptr),
+chunk_X(0), chunk_Z(0), biome(biomeValue), decorationStage(DecorationStage::Done),
+stopStage(DecorationStage::Done),
+decorationIndex(0), treeCount(0), clayGen(new WorldGenClay(4)),
+sandGen(new WorldGenSand(7, Block::sand->blockID)),
+gravelAsSandGen(new WorldGenSand(6, Block::gravel->blockID)),
+dirtGen(new WorldGenMinable(Block::dirt->blockID, 32)),
+gravelGen(new WorldGenMinable(Block::gravel->blockID, 32)),
+coalGen(new WorldGenMinable(Block::oreCoal->blockID, 16)),
+ironGen(new WorldGenMinable(Block::oreIron->blockID, 8)),
+goldGen(new WorldGenMinable(Block::oreGold->blockID, 8)),
+redstoneGen(new WorldGenMinable(Block::oreRedstone->blockID, 7)),
+diamondGen(new WorldGenMinable(Block::oreDiamond->blockID, 7)),
+lapisGen(new WorldGenMinable(Block::oreLapis->blockID, 6)),
+plantYellowGen(new WorldGenFlowers(Block::plantYellow->blockID)),
+plantRedGen(new WorldGenFlowers(Block::plantRed->blockID)),
+mushroomBrownGen(new WorldGenFlowers(Block::mushroomBrown->blockID)),
+mushroomRedGen(new WorldGenFlowers(Block::mushroomRed->blockID)),
+bigMushroomGen(new WorldGenBigMushroom()), reedGen(new WorldGenReed()),
+cactusGen(new WorldGenCactus()), waterlilyGen(new WorldGenWaterlily()),
+waterlilyPerChunk(0), treesPerChunk(0), flowersPerChunk(2), grassPerChunk(1),
+deadBushPerChunk(0), mushroomsPerChunk(0), reedsPerChunk(0), cactiPerChunk(0),
+sandPerChunk(1), sandPerChunk2(3), clayPerChunk(1), bigMushroomsPerChunk(0)
 {
 }
 
@@ -139,19 +139,19 @@ void BiomeDecorator::beginDecoration(World *world, Random &random, int_t chunkX,
     chunk_Z = chunkZ;
     switch (pass)
     {
-    case DecorationPass::Vegetation:
-        decorationStage = DecorationStage::Dirt;
-        stopStage = DecorationStage::WaterSprings;
-        break;
-    case DecorationPass::Springs:
-        decorationStage = DecorationStage::WaterSprings;
-        stopStage = DecorationStage::Done;
-        break;
-    case DecorationPass::Full:
-    default:
-        decorationStage = DecorationStage::Dirt;
-        stopStage = DecorationStage::Done;
-        break;
+        case DecorationPass::Vegetation:
+            decorationStage = DecorationStage::Dirt;
+            stopStage = DecorationStage::WaterSprings;
+            break;
+        case DecorationPass::Springs:
+            decorationStage = DecorationStage::WaterSprings;
+            stopStage = DecorationStage::Done;
+            break;
+        case DecorationPass::Full:
+        default:
+            decorationStage = DecorationStage::Dirt;
+            stopStage = DecorationStage::Done;
+            break;
     }
     decorationIndex = 0;
     treeCount = 0;
@@ -245,7 +245,7 @@ bool BiomeDecorator::advanceDecoration()
         const DecorationStage *stage;
         std::uint32_t start;
         explicit StageScope(const DecorationStage *s)
-            : stage(s), start(platformProfileRenderPhaseBegin()) {}
+        : stage(s), start(platformProfileRenderPhaseBegin()) {}
         ~StageScope() { platformProfileDecorWork(start, stageName(*stage)); }
         StageScope(const StageScope &) = delete;
         StageScope &operator=(const StageScope &) = delete;
@@ -257,245 +257,250 @@ bool BiomeDecorator::advanceDecoration()
         {
             switch (decorationStage)
             {
-            case DecorationStage::Dirt:
-                if (advanceStandardOre1(PLATFORM_POPULATE_DIRT_VEINS, dirtGen.get(), 0, 128)) return false;
-                nextStage(DecorationStage::Gravel); break;
-            case DecorationStage::Gravel:
-                if (advanceStandardOre1(PLATFORM_POPULATE_GRAVEL_VEINS, gravelGen.get(), 0, 128)) return false;
-                nextStage(DecorationStage::Coal); break;
-            case DecorationStage::Coal:
-                if (advanceStandardOre1(20, coalGen.get(), 0, 128)) return false;
-                nextStage(DecorationStage::Iron); break;
-            case DecorationStage::Iron:
-                if (advanceStandardOre1(20, ironGen.get(), 0, 64)) return false;
-                nextStage(DecorationStage::Gold); break;
-            case DecorationStage::Gold:
-                if (advanceStandardOre1(2, goldGen.get(), 0, 32)) return false;
-                nextStage(DecorationStage::Redstone); break;
-            case DecorationStage::Redstone:
-                if (advanceStandardOre1(8, redstoneGen.get(), 0, 16)) return false;
-                nextStage(DecorationStage::Diamond); break;
-            case DecorationStage::Diamond:
-                if (advanceStandardOre1(1, diamondGen.get(), 0, 16)) return false;
-                nextStage(DecorationStage::Lapis); break;
-            case DecorationStage::Lapis:
-                if (advanceStandardOre2(1, lapisGen.get(), 16, 16)) return false;
-                nextStage(DecorationStage::Sand); break;
-            case DecorationStage::Sand:
-                if (decorationIndex < sandPerChunk2)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    sandGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::Clay); break;
-            case DecorationStage::Clay:
-                if (decorationIndex < clayPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    clayGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::GravelAsSand); break;
-            case DecorationStage::GravelAsSand:
-                if (decorationIndex < sandPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    sandGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::TreeSetup); break;
-            case DecorationStage::TreeSetup:
-                treeCount = treesPerChunk;
+                case DecorationStage::Dirt:
+                    if (advanceStandardOre1(PLATFORM_POPULATE_DIRT_VEINS, dirtGen.get(), 0, 128)) return false;
+                    nextStage(DecorationStage::Gravel); break;
+                case DecorationStage::Gravel:
+                    if (advanceStandardOre1(PLATFORM_POPULATE_GRAVEL_VEINS, gravelGen.get(), 0, 128)) return false;
+                    nextStage(DecorationStage::Coal); break;
+                case DecorationStage::Coal:
+                    if (advanceStandardOre1(20, coalGen.get(), 0, 128)) return false;
+                    nextStage(DecorationStage::Iron); break;
+                case DecorationStage::Iron:
+                    if (advanceStandardOre1(20, ironGen.get(), 0, 64)) return false;
+                    nextStage(DecorationStage::Gold); break;
+                case DecorationStage::Gold:
+                    if (advanceStandardOre1(2, goldGen.get(), 0, 32)) return false;
+                    nextStage(DecorationStage::Redstone); break;
+                case DecorationStage::Redstone:
+                    if (advanceStandardOre1(8, redstoneGen.get(), 0, 16)) return false;
+                    nextStage(DecorationStage::Diamond); break;
+                case DecorationStage::Diamond:
+                    if (advanceStandardOre1(1, diamondGen.get(), 0, 16)) return false;
+                    nextStage(DecorationStage::Lapis); break;
+                case DecorationStage::Lapis:
+                    if (advanceStandardOre2(1, lapisGen.get(), 16, 16)) return false;
+                    nextStage(DecorationStage::Sand); break;
+                case DecorationStage::Sand:
+                    if (decorationIndex < sandPerChunk2)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        sandGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::Clay); break;
+                case DecorationStage::Clay:
+                    if (decorationIndex < clayPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        clayGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::GravelAsSand); break;
+                case DecorationStage::GravelAsSand:
+                    if (decorationIndex < sandPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        sandGen->generate(currentWorld, *randomGenerator, x, currentWorld->getTopSolidOrLiquidBlock(x, z), z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::TreeSetup); break;
+                case DecorationStage::TreeSetup:
+                    treeCount = treesPerChunk;
+                    if (PLATFORM_POPULATE_TREES_PER_CHUNK_MAX >= 0 && treeCount > PLATFORM_POPULATE_TREES_PER_CHUNK_MAX)
+                        treeCount = PLATFORM_POPULATE_TREES_PER_CHUNK_MAX;
+                if (randomGenerator->nextInt(10) == 0) ++treeCount;
+
+                // Enforce platform tree limit unconditionally across all world types (Infinite, 256x256, 864x864)
                 if (PLATFORM_POPULATE_TREES_PER_CHUNK_MAX >= 0 && treeCount > PLATFORM_POPULATE_TREES_PER_CHUNK_MAX)
                     treeCount = PLATFORM_POPULATE_TREES_PER_CHUNK_MAX;
-                if (randomGenerator->nextInt(10) == 0) ++treeCount;
+
                 nextStage(DecorationStage::Trees); break;
-            case DecorationStage::Trees:
-                if (decorationIndex < treeCount)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenerator *generator = biome->getRandomWorldGenForTrees(*randomGenerator);
-                    if (generator != nullptr)
+                case DecorationStage::Trees:
+                    if (decorationIndex < treeCount)
                     {
-                        generator->setScale(1.0, 1.0, 1.0);
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
-                        const PlatformPopulationAccessSnapshot accessStart = platformProfilePopulationAccessSnapshot();
-                        const std::uint32_t treeStart = platformProfileRenderPhaseBegin();
-#endif
-                        const int_t y = currentWorld->getHeightValue(x, z);
-                        ChunkLocalStructureAvoidanceScope structureAvoidance(currentWorld);
-                        generator->generate(currentWorld, *randomGenerator, x, y, z);
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
-                        platformProfileTreeGenerator(treeStart, accessStart, generator);
-#endif
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenerator *generator = biome->getRandomWorldGenForTrees(*randomGenerator);
+                        if (generator != nullptr)
+                        {
+                            generator->setScale(1.0, 1.0, 1.0);
+                            #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+                            const PlatformPopulationAccessSnapshot accessStart = platformProfilePopulationAccessSnapshot();
+                            const std::uint32_t treeStart = platformProfileRenderPhaseBegin();
+                            #endif
+                            const int_t y = currentWorld->getHeightValue(x, z);
+                            ChunkLocalStructureAvoidanceScope structureAvoidance(currentWorld);
+                            generator->generate(currentWorld, *randomGenerator, x, y, z);
+                            #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+                            platformProfileTreeGenerator(treeStart, accessStart, generator);
+                            #endif
+                        }
+                        biome->releaseWorldGenForTrees(generator);
+                        ++decorationIndex; return false;
                     }
-                    biome->releaseWorldGenForTrees(generator);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::BigMushrooms); break;
-            case DecorationStage::BigMushrooms:
-                if (decorationIndex < bigMushroomsPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    bigMushroomGen->generate(currentWorld, *randomGenerator, x, currentWorld->getHeightValue(x, z), z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::YellowFlowers); break;
-            case DecorationStage::YellowFlowers:
-                if (decorationIndex < flowersPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    plantYellowGen->generate(currentWorld, *randomGenerator, x, y, z);
-                    decorationStage = DecorationStage::RedFlowers; return false;
-                }
-                nextStage(DecorationStage::Grass); break;
-            case DecorationStage::RedFlowers:
-                if (randomGenerator->nextInt(4) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    plantRedGen->generate(currentWorld, *randomGenerator, x, y, z);
-                }
-                ++decorationIndex; decorationStage = DecorationStage::YellowFlowers; return false;
-            case DecorationStage::Grass:
-                if (decorationIndex < grassPerChunk &&
-                    (PLATFORM_POPULATE_GRASS_PER_CHUNK_MAX < 0 || decorationIndex < PLATFORM_POPULATE_GRASS_PER_CHUNK_MAX))
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenerator *generator = biome->func_48410_b(*randomGenerator);
-                    if (generator != nullptr) generator->generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::DeadBushes); break;
-            case DecorationStage::DeadBushes:
-                if (decorationIndex < deadBushPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenDeadBush(Block::deadBush->blockID).generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::WaterLilies); break;
-            case DecorationStage::WaterLilies:
-                if (decorationIndex < waterlilyPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    int_t y = randomGenerator->nextInt(128);
-                    while (y > 0 && currentWorld->getBlockId(x, y - 1, z) == 0) --y;
-                    waterlilyGen->generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::MushroomLoopBrown); break;
-            case DecorationStage::MushroomLoopBrown:
-                if (decorationIndex >= mushroomsPerChunk) { nextStage(DecorationStage::BrownMushroom); break; }
-                if (randomGenerator->nextInt(4) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    mushroomBrownGen->generate(currentWorld, *randomGenerator, x, currentWorld->getHeightValue(x, z), z);
-                }
-                decorationStage = DecorationStage::MushroomLoopRed; return false;
-            case DecorationStage::MushroomLoopRed:
-                if (randomGenerator->nextInt(8) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    mushroomRedGen->generate(currentWorld, *randomGenerator, x, y, z);
-                }
-                ++decorationIndex; decorationStage = DecorationStage::MushroomLoopBrown; return false;
-            case DecorationStage::BrownMushroom:
-                if (randomGenerator->nextInt(4) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    mushroomBrownGen->generate(currentWorld, *randomGenerator, x, y, z);
-                }
-                nextStage(DecorationStage::RedMushroom); return false;
-            case DecorationStage::RedMushroom:
-                if (randomGenerator->nextInt(8) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    mushroomRedGen->generate(currentWorld, *randomGenerator, x, y, z);
-                }
-                nextStage(DecorationStage::Reeds); return false;
-            case DecorationStage::Reeds:
-                if (decorationIndex < reedsPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    reedGen->generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::ExtraReeds); break;
-            case DecorationStage::ExtraReeds:
-                if (decorationIndex < 10)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    reedGen->generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::Pumpkin); break;
-            case DecorationStage::Pumpkin:
-                if (randomGenerator->nextInt(32) == 0)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenPumpkin().generate(currentWorld, *randomGenerator, x, y, z);
-                }
-                nextStage(DecorationStage::Cacti); return false;
-            case DecorationStage::Cacti:
-                if (decorationIndex < cactiPerChunk)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(128);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    cactusGen->generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::WaterSprings); break;
-            case DecorationStage::WaterSprings:
-                if (generateLakes && decorationIndex < PLATFORM_POPULATE_WATER_SPRINGS)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(randomGenerator->nextInt(120) + 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenLiquids(Block::waterMoving->blockID).generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::LavaSprings); break;
-            case DecorationStage::LavaSprings:
-                if (generateLakes && decorationIndex < PLATFORM_POPULATE_LAVA_SPRINGS)
-                {
-                    const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
-                    const int_t y = randomGenerator->nextInt(randomGenerator->nextInt(randomGenerator->nextInt(112) + 8) + 8);
-                    const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
-                    WorldGenLiquids(Block::lavaMoving->blockID).generate(currentWorld, *randomGenerator, x, y, z);
-                    ++decorationIndex; return false;
-                }
-                nextStage(DecorationStage::Done); break;
-            case DecorationStage::Done:
-                return true;
+                    nextStage(DecorationStage::BigMushrooms); break;
+                case DecorationStage::BigMushrooms:
+                    if (decorationIndex < bigMushroomsPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        bigMushroomGen->generate(currentWorld, *randomGenerator, x, currentWorld->getHeightValue(x, z), z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::YellowFlowers); break;
+                case DecorationStage::YellowFlowers:
+                    if (decorationIndex < flowersPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        plantYellowGen->generate(currentWorld, *randomGenerator, x, y, z);
+                        decorationStage = DecorationStage::RedFlowers; return false;
+                    }
+                    nextStage(DecorationStage::Grass); break;
+                case DecorationStage::RedFlowers:
+                    if (randomGenerator->nextInt(4) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        plantRedGen->generate(currentWorld, *randomGenerator, x, y, z);
+                    }
+                    ++decorationIndex; decorationStage = DecorationStage::YellowFlowers; return false;
+                case DecorationStage::Grass:
+                    if (decorationIndex < grassPerChunk &&
+                        (PLATFORM_POPULATE_GRASS_PER_CHUNK_MAX < 0 || decorationIndex < PLATFORM_POPULATE_GRASS_PER_CHUNK_MAX))
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenerator *generator = biome->func_48410_b(*randomGenerator);
+                        if (generator != nullptr) generator->generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::DeadBushes); break;
+                case DecorationStage::DeadBushes:
+                    if (decorationIndex < deadBushPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenDeadBush(Block::deadBush->blockID).generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::WaterLilies); break;
+                case DecorationStage::WaterLilies:
+                    if (decorationIndex < waterlilyPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        int_t y = randomGenerator->nextInt(128);
+                        while (y > 0 && currentWorld->getBlockId(x, y - 1, z) == 0) --y;
+                        waterlilyGen->generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::MushroomLoopBrown); break;
+                case DecorationStage::MushroomLoopBrown:
+                    if (decorationIndex >= mushroomsPerChunk) { nextStage(DecorationStage::BrownMushroom); break; }
+                    if (randomGenerator->nextInt(4) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        mushroomBrownGen->generate(currentWorld, *randomGenerator, x, currentWorld->getHeightValue(x, z), z);
+                    }
+                    decorationStage = DecorationStage::MushroomLoopRed; return false;
+                case DecorationStage::MushroomLoopRed:
+                    if (randomGenerator->nextInt(8) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        mushroomRedGen->generate(currentWorld, *randomGenerator, x, y, z);
+                    }
+                    ++decorationIndex; decorationStage = DecorationStage::MushroomLoopBrown; return false;
+                case DecorationStage::BrownMushroom:
+                    if (randomGenerator->nextInt(4) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        mushroomBrownGen->generate(currentWorld, *randomGenerator, x, y, z);
+                    }
+                    nextStage(DecorationStage::RedMushroom); return false;
+                case DecorationStage::RedMushroom:
+                    if (randomGenerator->nextInt(8) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        mushroomRedGen->generate(currentWorld, *randomGenerator, x, y, z);
+                    }
+                    nextStage(DecorationStage::Reeds); return false;
+                case DecorationStage::Reeds:
+                    if (decorationIndex < reedsPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        reedGen->generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::ExtraReeds); break;
+                case DecorationStage::ExtraReeds:
+                    if (decorationIndex < 10)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        reedGen->generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::Pumpkin); break;
+                case DecorationStage::Pumpkin:
+                    if (randomGenerator->nextInt(32) == 0)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenPumpkin().generate(currentWorld, *randomGenerator, x, y, z);
+                    }
+                    nextStage(DecorationStage::Cacti); return false;
+                case DecorationStage::Cacti:
+                    if (decorationIndex < cactiPerChunk)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(128);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        cactusGen->generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::WaterSprings); break;
+                case DecorationStage::WaterSprings:
+                    if (generateLakes && decorationIndex < PLATFORM_POPULATE_WATER_SPRINGS)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(randomGenerator->nextInt(120) + 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenLiquids(Block::waterMoving->blockID).generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::LavaSprings); break;
+                case DecorationStage::LavaSprings:
+                    if (generateLakes && decorationIndex < PLATFORM_POPULATE_LAVA_SPRINGS)
+                    {
+                        const int_t x = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_X, randomGenerator->nextInt(16)), 8);
+                        const int_t y = randomGenerator->nextInt(randomGenerator->nextInt(randomGenerator->nextInt(112) + 8) + 8);
+                        const int_t z = JavaArithmetic::intAdd(JavaArithmetic::intAdd(chunk_Z, randomGenerator->nextInt(16)), 8);
+                        WorldGenLiquids(Block::lavaMoving->blockID).generate(currentWorld, *randomGenerator, x, y, z);
+                        ++decorationIndex; return false;
+                    }
+                    nextStage(DecorationStage::Done); break;
+                case DecorationStage::Done:
+                    return true;
             }
         }
     }

@@ -195,6 +195,7 @@ GuiIngame::GuiIngame(Minecraft *minecraft)
 	, rand(new Random())
 	, field_933_a("")
 	, updateCounter(0)
+	, debugHudRefreshCounter(0)
 	, recordPlaying("")
 	, recordPlayingUpFor(0)
 	, field_22065_l(false)
@@ -202,6 +203,10 @@ GuiIngame::GuiIngame(Minecraft *minecraft)
 	, isScrolled(false)
 #if PLATFORM_PC_LEGACY
 	, pcLegacyHudDisplayLists(0)
+	, pcLegacyDebugHudDisplayList(0)
+	, pcLegacyDebugHudWidth(-1)
+	, pcLegacyDebugHudFontRevision(0)
+	, pcLegacyDebugHudValid(false)
 	, pcLegacyHudWidth(-1)
 	, pcLegacyHudHeight(-1)
 	, pcLegacyHotbarItem(-1)
@@ -230,6 +235,11 @@ GuiIngame::~GuiIngame()
 	{
 		GLAllocation::deleteDisplayLists(pcLegacyHudDisplayLists);
 		pcLegacyHudDisplayLists = 0;
+	}
+	if (pcLegacyDebugHudDisplayList != 0)
+	{
+		GLAllocation::deleteDisplayLists(pcLegacyDebugHudDisplayList);
+		pcLegacyDebugHudDisplayList = 0;
 	}
 #endif
 #ifdef PS2_PLATFORM
@@ -301,32 +311,81 @@ void GuiIngame::renderDebugOverlay(FontRenderer *fontRenderer, int_t screenWidth
 	fontRenderer->drawString(positionLine, 2, 52, color);
 	fontRenderer->endTextBatch();
 #else
-	fontRenderer->drawStringWithShadow("OptiCraft (" + mc->debug + ") Cocoazu", 2, 2, 0xffffff);
-	fontRenderer->drawStringWithShadow(mc->getDebugLine1(), 2, 12, 0xffffff);
-	fontRenderer->drawStringWithShadow(mc->getDebugLine2(), 2, 22, 0xffffff);
-	fontRenderer->drawStringWithShadow(mc->getDebugLine3(), 2, 32, 0xffffff);
-	fontRenderer->drawStringWithShadow(mc->getDebugLine4(), 2, 42, 0xffffff);
-	std::string cpuGpuLine = "CPU: " + std::to_string((int_t)(mc->cpuUsagePercent + 0.5f)) + "% GPU: "
-	    + std::to_string((int_t)(mc->gpuUsagePercent + 0.5f)) + "%";
-	fontRenderer->drawStringWithShadow(cpuGpuLine, 2, 52, 0xffffff);
-	Runtime &runtime = Runtime::getRuntime();
-	long_t maxMemory = runtime.maxMemory();
-	long_t totalMemory = runtime.totalMemory();
-	long_t freeMemory = runtime.freeMemory();
-	long_t usedMemory = totalMemory - freeMemory;
-	std::string memoryUsed = "Used memory: " + std::to_string((usedMemory * 100LL) / maxMemory) + "% ("
-	    + std::to_string(usedMemory / 1024LL / 1024LL) + "MB) of "
-	    + std::to_string(maxMemory / 1024LL / 1024LL) + "MB";
-	drawString(fontRenderer, memoryUsed, screenWidth - fontRenderer->getStringWidth(memoryUsed) - 2, 2, 0xe0e0e0);
-	std::string memoryAllocated = "Allocated memory: " + std::to_string((totalMemory * 100LL) / maxMemory) + "% ("
-	    + std::to_string(totalMemory / 1024LL / 1024LL) + "MB)";
-	drawString(fontRenderer, memoryAllocated, screenWidth - fontRenderer->getStringWidth(memoryAllocated) - 2, 12, 0xe0e0e0);
-	drawString(fontRenderer, "x: " + std::to_string(mc->thePlayer->posX), 2, 64, 0xe0e0e0);
-	drawString(fontRenderer, "y: " + std::to_string(mc->thePlayer->posY), 2, 72, 0xe0e0e0);
-	drawString(fontRenderer, "z: " + std::to_string(mc->thePlayer->posZ), 2, 80, 0xe0e0e0);
-	drawString(fontRenderer, "f: " + std::to_string(MathHelper::floor_float((mc->thePlayer->rotationYaw * 4.0f) / 360.0f + 0.5f) & 3), 2, 88, 0xe0e0e0);
+	bool debugHudTextUpdated = false;
+	if (debugHudLeftLines.empty() || ++debugHudRefreshCounter >= 10)
+	{
+		debugHudTextUpdated = true;
+		debugHudRefreshCounter = 0;
+		debugHudLeftLines.clear();
+		debugHudCoordinateValues.clear();
+		debugHudRightLines.clear();
+		debugHudLeftLines.push_back("OptiCraft | " + mc->debug);
+		debugHudLeftLines.push_back(mc->getDebugLine1());
+		debugHudLeftLines.push_back(mc->getDebugLine2());
+		debugHudLeftLines.push_back(mc->getDebugLine3());
+		debugHudLeftLines.push_back(mc->getDebugLine4());
+
+		const int_t blockX = MathHelper::floor_double(mc->thePlayer->posX);
+		const int_t blockY = MathHelper::floor_double(mc->thePlayer->posY);
+		const int_t blockZ = MathHelper::floor_double(mc->thePlayer->posZ);
+		const int_t chunkX = MathHelper::floor_double(mc->thePlayer->posX / 16.0);
+		const int_t chunkY = MathHelper::floor_double(mc->thePlayer->posY / 16.0);
+		const int_t chunkZ = MathHelper::floor_double(mc->thePlayer->posZ / 16.0);
+		char positionLine[128];
+		debugHudLeftLines.emplace_back("XYZ:");
+		std::snprintf(positionLine, sizeof(positionLine), "%.3f", mc->thePlayer->posX);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%.3f", mc->thePlayer->posY);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%.3f", mc->thePlayer->posZ);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		debugHudLeftLines.emplace_back("Block:");
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockX);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockY);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockZ);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		debugHudLeftLines.emplace_back("Chunk Relative:");
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockX - chunkX * 16);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockY - chunkY * 16);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", blockZ - chunkZ * 16);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		debugHudLeftLines.emplace_back("Chunk Coordinates:");
+		std::snprintf(positionLine, sizeof(positionLine), "%d", chunkX);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", chunkY);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		std::snprintf(positionLine, sizeof(positionLine), "%d", chunkZ);
+		debugHudCoordinateValues.emplace_back(positionLine);
+		const int_t facing = MathHelper::floor_float((mc->thePlayer->rotationYaw * 4.0f) / 360.0f + 0.5f) & 3;
+		const char *directions[] = { "South", "West", "North", "East" };
+		std::snprintf(positionLine, sizeof(positionLine), "Facing: %s | yaw %.1f pitch %.1f",
+			directions[facing], mc->thePlayer->rotationYaw, mc->thePlayer->rotationPitch);
+		debugHudLeftLines.emplace_back(positionLine);
+
+		Runtime &runtime = Runtime::getRuntime();
+		const long_t maxMemory = runtime.maxMemory();
+		const long_t totalMemory = runtime.totalMemory();
+		const long_t usedMemory = totalMemory - runtime.freeMemory();
+		char memoryLine[128];
+		std::snprintf(memoryLine, sizeof(memoryLine), "Used memory: %lld%% (%lld/%lld MB)",
+			static_cast<long long>(maxMemory > 0 ? (usedMemory * 100LL) / maxMemory : 0),
+			static_cast<long long>(usedMemory / 1024LL / 1024LL),
+			static_cast<long long>(maxMemory / 1024LL / 1024LL));
+		debugHudRightLines.emplace_back(memoryLine);
+		std::snprintf(memoryLine, sizeof(memoryLine), "Allocated memory: %lld%% (%lld MB)",
+			static_cast<long long>(maxMemory > 0 ? (totalMemory * 100LL) / maxMemory : 0),
+			static_cast<long long>(totalMemory / 1024LL / 1024LL));
+		debugHudRightLines.emplace_back(memoryLine);
+		std::snprintf(memoryLine, sizeof(memoryLine), "CPU: %d%% | GPU: %d%%",
+			static_cast<int_t>(mc->cpuUsagePercent + 0.5f),
+			static_cast<int_t>(mc->gpuUsagePercent + 0.5f));
+		debugHudRightLines.emplace_back(memoryLine);
 #ifdef WII_PLATFORM
-	drawString(fontRenderer, platformInputDebugLine(), 2, 96, 0xe0e0e0);
+		debugHudLeftLines.push_back(platformInputDebugLine());
 	WorldClient *multiplayerWorld = dynamic_cast<WorldClient *>(mc->theWorld);
 	if (multiplayerWorld != nullptr)
 	{
@@ -339,7 +398,7 @@ void GuiIngame::renderDebugOverlay(FontRenderer *fontRenderer, int_t screenWidth
 			(unsigned long)multiplayerWorld->getDeferredChunkPromotions(),
 			multiplayerWorld->getDeferredPromotionPendingCount(),
 			(unsigned long)multiplayerWorld->getDeferredChunkBudgetOverflows());
-		drawString(fontRenderer, multiplayerLine, 2, 106, 0xe0e0e0);
+		debugHudLeftLines.emplace_back(multiplayerLine);
 
 		EntityClientPlayerMP *multiplayerPlayer = dynamic_cast<EntityClientPlayerMP *>(mc->thePlayer);
 		NetClientHandler *handler = multiplayerPlayer != nullptr ? multiplayerPlayer->sendQueue : nullptr;
@@ -354,7 +413,7 @@ void GuiIngame::renderDebugOverlay(FontRenderer *fontRenderer, int_t screenWidth
 				handler->getMapChunkCount(),
 				networkManager->getReadQueuePacketCount(),
 				networkManager->getReadQueueByteLength() / 1024u);
-			drawString(fontRenderer, packetLine, 2, 116, 0xe0e0e0);
+			debugHudLeftLines.emplace_back(packetLine);
 
 			char socketLine[112];
 			std::snprintf(socketLine, sizeof(socketLine),
@@ -363,9 +422,71 @@ void GuiIngame::renderDebugOverlay(FontRenderer *fontRenderer, int_t screenWidth
 				networkManager->getSocketSentByteCount() / 1024u,
 				networkManager->isReadThreadActive() ? 1 : 0,
 				networkManager->isWriteThreadActive() ? 1 : 0);
-			drawString(fontRenderer, socketLine, 2, 126, 0xe0e0e0);
+			debugHudLeftLines.emplace_back(socketLine);
 		}
 	}
+#endif
+	}
+
+	const auto drawDebugHudText = [&]()
+	{
+		fontRenderer->beginTextBatch();
+		for (std::size_t i = 0; i < debugHudLeftLines.size(); ++i)
+		{
+			const int_t y = static_cast<int_t>(2 + i * 10);
+			if (i >= 5 && i <= 8)
+			{
+				const std::size_t valueIndex = (i - 5) * 3;
+				int_t x = 2;
+				fontRenderer->drawStringWithShadow(debugHudLeftLines[i], x, y, 0xff5555);
+				x += fontRenderer->getStringWidth(debugHudLeftLines[i]) + 4;
+				fontRenderer->drawStringWithShadow(debugHudCoordinateValues[valueIndex], x, y, 0x55ffff);
+				x += fontRenderer->getStringWidth(debugHudCoordinateValues[valueIndex]) + 4;
+				fontRenderer->drawStringWithShadow(debugHudCoordinateValues[valueIndex + 1], x, y, 0x55ff55);
+				x += fontRenderer->getStringWidth(debugHudCoordinateValues[valueIndex + 1]) + 4;
+				fontRenderer->drawStringWithShadow(debugHudCoordinateValues[valueIndex + 2], x, y, 0x55ffff);
+				continue;
+			}
+
+			const int_t color = i == 0 ? 0x55ff55 : (i < 5 ? 0x55ffff : (i == 9 ? 0xffffff : 0xffaa00));
+			fontRenderer->drawStringWithShadow(debugHudLeftLines[i], 2, y, color);
+			if (i == 0)
+			{
+				const int_t tagX = 2 + fontRenderer->getStringWidth(debugHudLeftLines[i]) + 4;
+				fontRenderer->drawStringWithShadow("Cocoazu", tagX, y, 0xffaa00);
+			}
+		}
+		for (std::size_t i = 0; i < debugHudRightLines.size(); ++i)
+		{
+			const int_t color = i == 2 ? 0xffaa00 : 0x55ffff;
+			fontRenderer->drawStringWithShadow(debugHudRightLines[i],
+				screenWidth - fontRenderer->getStringWidth(debugHudRightLines[i]) - 2,
+				static_cast<int_t>(2 + i * 10), color);
+		}
+		fontRenderer->endTextBatch();
+	};
+
+#if PLATFORM_PC_LEGACY
+	if (pcLegacyDebugHudDisplayList == 0)
+		pcLegacyDebugHudDisplayList = GLAllocation::generateDisplayLists(1);
+	const unsigned int fontRevision = fontRenderer->getTextCacheRevision();
+	if (pcLegacyDebugHudDisplayList != 0 &&
+		(debugHudTextUpdated || !pcLegacyDebugHudValid || pcLegacyDebugHudWidth != screenWidth ||
+			pcLegacyDebugHudFontRevision != fontRevision))
+	{
+		renderBeginDisplayList(pcLegacyDebugHudDisplayList);
+		drawDebugHudText();
+		renderEndDisplayList();
+		pcLegacyDebugHudWidth = screenWidth;
+		pcLegacyDebugHudFontRevision = fontRevision;
+		pcLegacyDebugHudValid = true;
+	}
+	if (pcLegacyDebugHudDisplayList != 0 && pcLegacyDebugHudValid)
+		renderCallDisplayList(pcLegacyDebugHudDisplayList);
+	else
+		drawDebugHudText();
+#else
+	drawDebugHudText();
 #endif
 #endif
 	renderPopMatrix();

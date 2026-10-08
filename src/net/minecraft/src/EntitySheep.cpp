@@ -135,6 +135,26 @@ float EntitySheep::getHeadRotationAngleX(float partialTick) const
 bool EntitySheep::interact(EntityPlayer *entityplayer)
 {
 	ItemStack *itemstack = entityplayer != nullptr ? entityplayer->inventory->getCurrentItem() : nullptr;
+	if (itemstack != nullptr && itemstack->itemID == Item::straw->shiftedIndex && getSheared())
+	{
+		if (!worldObj->multiplayerWorld)
+		{
+			setSheared(false);
+			if (!entityplayer->capabilities.isCreativeMode)
+			{
+				int_t strawCount = 1 + rand.nextInt(5);
+				if (strawCount > itemstack->stackSize)
+					strawCount = itemstack->stackSize;
+				itemstack->stackSize -= strawCount;
+				if (itemstack->stackSize <= 0)
+				{
+					const int_t slot = entityplayer->inventory->currentItem;
+					entityplayer->inventory->setInventorySlotContents(slot, nullptr);
+				}
+			}
+		}
+		return true;
+	}
 	if (itemstack != nullptr && itemstack->itemID == Item::shears->shiftedIndex && !getSheared() && !isChild())
 	{
 		if (!worldObj->multiplayerWorld)

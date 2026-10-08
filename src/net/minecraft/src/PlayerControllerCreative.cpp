@@ -23,6 +23,7 @@ void PlayerControllerCreative::enableAbilities(EntityPlayer *player)
     player->capabilities.allowFlying = true;
     player->capabilities.isCreativeMode = true;
     player->capabilities.disableDamage = true;
+    player->capabilities.isSpectator = false;
 }
 
 void PlayerControllerCreative::disableAbilities(EntityPlayer *player)
@@ -33,6 +34,7 @@ void PlayerControllerCreative::disableAbilities(EntityPlayer *player)
     player->capabilities.isFlying = false;
     player->capabilities.isCreativeMode = false;
     player->capabilities.disableDamage = false;
+    player->capabilities.isSpectator = false;
 }
 
 void PlayerControllerCreative::initializePlayer(EntityPlayer *player)

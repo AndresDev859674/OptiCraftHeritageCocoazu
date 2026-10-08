@@ -144,6 +144,8 @@ void GameSettings::setDefaults()
 	selectedSkin = "LegacySteve";
 	legacyUI = legacyUiDefaultEnabled();
 	legacyLook = legacyLookDefaultEnabled();
+	legacyCrafting = false;
+	legacyCreative = false;
 	blockMultiplayer = false;
 	specialBlock = false;
 	armorDefenseGui = false;
@@ -222,7 +224,7 @@ void GameSettings::setDefaults()
 	ofKeyBindZoom = new KeyBinding("Zoom", 46);
 	keyBindings.push_back(ofKeyBindZoom);
 
-const PlatformGameDefaults& platformDefaults = platformGameDefaults();
+	const PlatformGameDefaults& platformDefaults = platformGameDefaults();
 	if (platformDefaults.usePerformanceProfile)
 	{
 		renderDistance = platformDefaults.renderDistance;
@@ -268,7 +270,7 @@ const PlatformGameDefaults& platformDefaults = platformGameDefaults();
 		ofAnimatedExplosion = false;
 		ofAnimatedFlame = false;
 		ofAnimatedSmoke = false;
-#if PLATFORM_PC_LEGACY
+		#if PLATFORM_PC_LEGACY
 		ofSmoothBiomes = false;
 		ofRandomMobs = false;
 		ofCustomColors = false;
@@ -277,7 +279,7 @@ const PlatformGameDefaults& platformDefaults = platformGameDefaults();
 		ofRainSplash = false;
 		ofPortalParticles = false;
 		ofDrippingWaterLava = false;
-#endif
+		#endif
 	}
 
 	KeyBinding::resetKeyBindingArrayAndHash();
@@ -570,10 +572,10 @@ void GameSettings::setOptionValue(const EnumOptions *enumoptions, int_t i)
 		ambientOcclusion = !ambientOcclusion;
 		invalidateChunkMeshes();
 	}
-#if PLATFORM_HAS_ASPECT_RATIO_OPTION
+	#if PLATFORM_HAS_ASPECT_RATIO_OPTION
 	if (enumoptions == EnumOptions::ASPECT_RATIO)
 		widescreen = !widescreen;
-#endif
+	#endif
 	// --- OptiFine ---
 	if (enumoptions == EnumOptions::FOG_FANCY)
 	{
@@ -620,17 +622,17 @@ void GameSettings::setOptionValue(const EnumOptions *enumoptions, int_t i)
 			ofPreloadedChunks = 0;
 		reloadChunkRenderers();
 	}
-#if PLATFORM_PC_LEGACY && defined(MC_WIN32)
+	#if PLATFORM_PC_LEGACY && defined(MC_WIN32)
 	if (enumoptions == EnumOptions::RENDER_BACKEND)
 	{
 		renderBackend = renderBackend == static_cast<int_t>(PcRenderBackendType::Direct3D9)
-			? static_cast<int_t>(PcRenderBackendType::OpenGL)
-			: static_cast<int_t>(PcRenderBackendType::Direct3D9);
+		? static_cast<int_t>(PcRenderBackendType::OpenGL)
+		: static_cast<int_t>(PcRenderBackendType::Direct3D9);
 		pcRenderBackendSetRequested(renderBackend == static_cast<int_t>(PcRenderBackendType::Direct3D9)
-			? PcRenderBackendType::Direct3D9
-			: PcRenderBackendType::OpenGL);
+		? PcRenderBackendType::Direct3D9
+		: PcRenderBackendType::OpenGL);
 	}
-#endif
+	#endif
 	if (enumoptions == EnumOptions::SMOOTH_FPS)
 		ofSmoothFps = !ofSmoothFps;
 	if (enumoptions == EnumOptions::SMOOTH_INPUT)
@@ -863,7 +865,7 @@ float GameSettings::getOptionFloatValue(const EnumOptions *enumoptions)
 		return ofAoLevel;
 	if (enumoptions == EnumOptions::RENDER_DISTANCE_FINE)
 		return (float)(ofRenderDistanceFine - 32) /
-		       (float)(Config::getMaxRenderDistanceFine() - 32);
+		(float)(Config::getMaxRenderDistanceFine() - 32);
 	return 0.0f;
 }
 
@@ -871,16 +873,16 @@ bool GameSettings::getOptionOrdinalValue(const EnumOptions *enumoptions)
 {
 	switch (EnumOptionsMappingHelper::enumOptionsMappingHelperArray[enumoptions->returnEnumOrdinal()])
 	{
-	case 1:
-		return invertMouse;
-	case 2:
-		return viewBobbing;
-	case 3:
-		return anaglyph;
-	case 4:
-		return advancedOpengl;
-	case 5:
-		return ambientOcclusion;
+		case 1:
+			return invertMouse;
+		case 2:
+			return viewBobbing;
+		case 3:
+			return anaglyph;
+		case 4:
+			return advancedOpengl;
+		case 5:
+			return ambientOcclusion;
 	}
 	return false;
 }
@@ -888,8 +890,8 @@ bool GameSettings::getOptionOrdinalValue(const EnumOptions *enumoptions)
 std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 {
 	std::string s = enumoptions == EnumOptions::ASPECT_RATIO
-		? "Aspect Ratio: "
-		: translateKey(enumoptions->getEnumString()) + ": ";
+	? "Aspect Ratio: "
+	: translateKey(enumoptions->getEnumString()) + ": ";
 	if (enumoptions->getEnumFloat())
 	{
 		float f = getOptionFloatValue(enumoptions);
@@ -967,18 +969,18 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 		return s + (ofLoadFar ? "ON" : "OFF");
 	if (enumoptions == EnumOptions::PRELOADED_CHUNKS)
 		return s + (ofPreloadedChunks == 0 ? std::string("OFF") : std::to_string(ofPreloadedChunks));
-#if PLATFORM_PC_LEGACY && defined(MC_WIN32)
+	#if PLATFORM_PC_LEGACY && defined(MC_WIN32)
 	if (enumoptions == EnumOptions::RENDER_BACKEND)
 	{
 		const PcRenderBackendType backend = renderBackend == static_cast<int_t>(PcRenderBackendType::Direct3D9)
-			? PcRenderBackendType::Direct3D9
-			: PcRenderBackendType::OpenGL;
+		? PcRenderBackendType::Direct3D9
+		: PcRenderBackendType::OpenGL;
 		std::string label = s + pcRenderBackendDisplayName(backend);
 		if (backend != pcRenderBackendGetActive())
 			label += " (restart)";
 		return label;
 	}
-#endif
+	#endif
 	if (enumoptions == EnumOptions::SMOOTH_FPS)
 		return s + (ofSmoothFps ? "ON" : "OFF");
 	if (enumoptions == EnumOptions::SMOOTH_INPUT)
@@ -987,9 +989,9 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofClouds)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
-		case 3: return s + "OFF";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
+			case 3: return s + "OFF";
 		}
 		return s + "Default";
 	}
@@ -997,8 +999,8 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofTrees)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
 		}
 		return s + "Default";
 	}
@@ -1006,8 +1008,8 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofGrass)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
 		}
 		return s + "Default";
 	}
@@ -1015,9 +1017,9 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofRain)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
-		case 3: return s + "OFF";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
+			case 3: return s + "OFF";
 		}
 		return s + "Default";
 	}
@@ -1025,9 +1027,9 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofWater)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
-		case 3: return s + "OFF";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
+			case 3: return s + "OFF";
 		}
 		return s + "Default";
 	}
@@ -1035,8 +1037,8 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofAnimatedWater)
 		{
-		case 1: return s + "Dynamic";
-		case 2: return s + "OFF";
+			case 1: return s + "Dynamic";
+			case 2: return s + "OFF";
 		}
 		return s + "ON";
 	}
@@ -1044,8 +1046,8 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofAnimatedLava)
 		{
-		case 1: return s + "Dynamic";
-		case 2: return s + "OFF";
+			case 1: return s + "Dynamic";
+			case 2: return s + "OFF";
 		}
 		return s + "ON";
 	}
@@ -1077,8 +1079,8 @@ std::string GameSettings::getKeyBinding(const EnumOptions *enumoptions)
 	{
 		switch (ofBetterGrass)
 		{
-		case 1: return s + "Fast";
-		case 2: return s + "Fancy";
+			case 1: return s + "Fast";
+			case 2: return s + "Fancy";
 		}
 		return s + "OFF";
 	}

@@ -9,6 +9,7 @@ public:
 
     static const int maxDamageArray[4];
 
+    ItemStack* onItemRightClick(ItemStack* itemstack, World* world, EntityPlayer* entityplayer) override;
     int getItemEnchantability() override;
 
     EnumArmorMaterial material;

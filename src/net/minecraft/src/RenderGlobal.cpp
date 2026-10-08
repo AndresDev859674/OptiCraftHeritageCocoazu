@@ -104,39 +104,39 @@
 
 namespace
 {
-inline void applyPs2LegacyAtmosphereRgb(Minecraft *mc, float &red, float &green, float &blue)
-{
-#if PLATFORM_PS2
-	if (mc != nullptr && mc->gameSettings != nullptr && mc->gameSettings->legacyLook)
-		legacyLookRgb(red, green, blue);
-#else
-	(void)mc;
-	(void)red;
-	(void)green;
-	(void)blue;
-#endif
-}
+	inline void applyPs2LegacyAtmosphereRgb(Minecraft *mc, float &red, float &green, float &blue)
+	{
+		#if PLATFORM_PS2
+		if (mc != nullptr && mc->gameSettings != nullptr && mc->gameSettings->legacyLook)
+			legacyLookRgb(red, green, blue);
+		#else
+		(void)mc;
+		(void)red;
+		(void)green;
+		(void)blue;
+		#endif
+	}
 }
 
 RenderGlobal::RenderGlobal(Minecraft *minecraft, RenderEngine *renderengine)
 {
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	MC_LOG_INFO("ps2", "RenderGlobal: constructor entered\n");
-#endif
+	#endif
 	tileEntities = std::vector<TileEntity *>();
 	worldRenderersToUpdate = std::vector<WorldRenderer *>();
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	occlusionEnabled = false;
-#endif
+	#endif
 	cloudOffsetX = 0;
 	renderDistance = -1;
 	renderEntitiesStartupCounter = 2;
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	MC_LOG_INFO("ps2", "RenderGlobal: constructor buffers ready\n");
-#endif
-#if PLATFORM_PC
+	#endif
+	#if PLATFORM_PC
 	occlusionResult = std::vector<int_t>(64);
-#endif
+	#endif
 	renderBatchRenderers = std::vector<WorldRenderer *>();
 	prevSortX = -9999.0;
 	prevSortY = -9999.0;
@@ -149,37 +149,37 @@ RenderGlobal::RenderGlobal(Minecraft *minecraft, RenderEngine *renderengine)
 	mc = minecraft;
 	renderEngine = renderengine;
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	occlusionEnabled = !PLATFORM_PC_LEGACY && renderSupportsFeature(RenderFeature::OcclusionQuery);
 	// Desktop 1.2.5 retains three GL lists per WorldRenderer (two terrain passes
 	// plus the occlusion box). Legacy PC uses a fixed low-end grid, so reserve only
 	// the namespace that grid can address instead of the desktop maximum.
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	constexpr int_t maxWorldRenderers = PLATFORM_VISIBLE_CHUNK_DIAMETER * PLATFORM_VERTICAL_CHUNK_COUNT * PLATFORM_VISIBLE_CHUNK_DIAMETER;
-#else
+	#else
 	constexpr int_t maxChunksWide = 400 / 16 + 1;
 	constexpr int_t maxChunksTall = WorldHeight::SECTION_COUNT;
 	constexpr int_t maxWorldRenderers = maxChunksWide * maxChunksTall * maxChunksWide;
-#endif
+	#endif
 	glRenderListBase = GLAllocation::generateDisplayLists(maxWorldRenderers * 3);
 	if (occlusionEnabled)
 	{
 		glOcclusionQueryBase = std::vector<int_t>(maxWorldRenderers);
 		renderGenerateOcclusionQueries((int)glOcclusionQueryBase.size(), glOcclusionQueryBase.data());
 	}
-#endif
+	#endif
 
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	MC_LOG_INFO("ps2", "RenderGlobal: allocating sky meshes\n");
-#endif
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+	#endif
+	#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 	renderStaticMeshCreate(starMesh);
 	renderStaticMeshCreate(skyMesh);
 	renderStaticMeshCreate(skyMesh2);
 
-#if !PLATFORM_PS2 || PS2_ENABLE_SKY_STARS
+	#if !PLATFORM_PS2 || PS2_ENABLE_SKY_STARS
 	renderStars();
-#endif
+	#endif
 
 	Tessellator *tessellator = &Tessellator::instance;
 	const byte_t byte1 = 64;
@@ -213,13 +213,13 @@ RenderGlobal::RenderGlobal(Minecraft *minecraft, RenderEngine *renderengine)
 	}
 	tessellator->finishStaticMesh(skyMesh2);
 
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	MC_LOG_INFO("ps2", "RenderGlobal: sky meshes %d+%d+%d verts, %d KB\n",
-		(int)starMesh.captured.vertexCount, (int)skyMesh.captured.vertexCount,
-		(int)skyMesh2.captured.vertexCount,
-		(int)((starMesh.captured.byteSize() + skyMesh.captured.byteSize() + skyMesh2.captured.byteSize()) / 1024));
-#endif
-#else
+				(int)starMesh.captured.vertexCount, (int)skyMesh.captured.vertexCount,
+				(int)skyMesh2.captured.vertexCount,
+				(int)((starMesh.captured.byteSize() + skyMesh.captured.byteSize() + skyMesh2.captured.byteSize()) / 1024));
+	#endif
+	#else
 	starGLCallList = GLAllocation::generateDisplayLists(3);
 	glSkyList = starGLCallList + 1;
 	glSkyList2 = starGLCallList + 2;
@@ -269,34 +269,34 @@ RenderGlobal::RenderGlobal(Minecraft *minecraft, RenderEngine *renderengine)
 
 	tessellator->draw();
 	renderEndDisplayList();
-#endif
+	#endif
 
-#if !PLATFORM_PS2
+	#if !PLATFORM_PS2
 	// Desktop batches GL lists; Wii batches native GX renderer handles. PS2 draws
 	// visible terrain sections directly and must not allocate these 64K-ID lists.
 	for (int_t i = 0; i < 4; i++)
 		allRenderLists[i] = new RenderList();
-#endif
-#if PLATFORM_PS2
+	#endif
+	#if PLATFORM_PS2
 	MC_LOG_INFO("ps2", "RenderGlobal: native terrain batching ready\n");
-#endif
+	#endif
 }
 
 RenderGlobal::~RenderGlobal()
 {
 	changeWorld(nullptr);
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+	#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 	renderStaticMeshDestroy(starMesh);
 	renderStaticMeshDestroy(skyMesh);
 	renderStaticMeshDestroy(skyMesh2);
-#endif
-#if !PLATFORM_PS2
+	#endif
+	#if !PLATFORM_PS2
 	for (RenderList *&renderList : allRenderLists)
 	{
 		delete renderList;
 		renderList = nullptr;
 	}
-#endif
+	#endif
 }
 
 void RenderGlobal::renderStars()
@@ -314,10 +314,10 @@ void RenderGlobal::renderStars()
 		tess_coord_t d1 = random.nextFloat() * 2.0f - 1.0f;
 		tess_coord_t d2 = random.nextFloat() * 2.0f - 1.0f;
 		tess_coord_t d3 = 0.25f + random.nextFloat() * 0.25f;
-#if PLATFORM_FLOAT_VERTEX_MATH
+		#if PLATFORM_FLOAT_VERTEX_MATH
 		const float lengthSq = static_cast<float>(d) * static_cast<float>(d) +
-		                       static_cast<float>(d1) * static_cast<float>(d1) +
-		                       static_cast<float>(d2) * static_cast<float>(d2);
+		static_cast<float>(d1) * static_cast<float>(d1) +
+		static_cast<float>(d2) * static_cast<float>(d2);
 
 		if (lengthSq >= 1.0f || lengthSq <= 0.01f)
 			continue;
@@ -326,10 +326,10 @@ void RenderGlobal::renderStars()
 		d = static_cast<tess_coord_t>(static_cast<float>(d) * invLength);
 		d1 = static_cast<tess_coord_t>(static_cast<float>(d1) * invLength);
 		d2 = static_cast<tess_coord_t>(static_cast<float>(d2) * invLength);
-#else
+		#else
 		const double lengthSq = static_cast<double>(d) * static_cast<double>(d) +
-		                        static_cast<double>(d1) * static_cast<double>(d1) +
-		                        static_cast<double>(d2) * static_cast<double>(d2);
+		static_cast<double>(d1) * static_cast<double>(d1) +
+		static_cast<double>(d2) * static_cast<double>(d2);
 
 		if (lengthSq >= 1.0 || lengthSq <= 0.01)
 			continue;
@@ -338,13 +338,13 @@ void RenderGlobal::renderStars()
 		d = static_cast<tess_coord_t>(static_cast<double>(d) * invLength);
 		d1 = static_cast<tess_coord_t>(static_cast<double>(d1) * invLength);
 		d2 = static_cast<tess_coord_t>(static_cast<double>(d2) * invLength);
-#endif
+		#endif
 
 		tess_coord_t d5 = d * static_cast<tess_coord_t>(100.0);
 		tess_coord_t d6 = d1 * static_cast<tess_coord_t>(100.0);
 		tess_coord_t d7 = d2 * static_cast<tess_coord_t>(100.0);
 
-#if PLATFORM_FLOAT_VERTEX_MATH
+		#if PLATFORM_FLOAT_VERTEX_MATH
 		const float d8 = std::atan2(static_cast<float>(d), static_cast<float>(d2));
 		tess_coord_t d9 = static_cast<tess_coord_t>(std::sin(d8));
 		tess_coord_t d10 = static_cast<tess_coord_t>(std::cos(d8));
@@ -354,7 +354,7 @@ void RenderGlobal::renderStars()
 		const float d14 = random.nextDoubleFloat() * 3.1415926535897931f * 2.0f;
 		tess_coord_t d15 = static_cast<tess_coord_t>(std::sin(d14));
 		tess_coord_t d16 = static_cast<tess_coord_t>(std::cos(d14));
-#else
+		#else
 		double d8 = JavaMath::atan2(d, d2);
 		tess_coord_t d9 = static_cast<tess_coord_t>(JavaMath::sin(d8));
 		tess_coord_t d10 = static_cast<tess_coord_t>(JavaMath::cos(d8));
@@ -364,7 +364,7 @@ void RenderGlobal::renderStars()
 		double d14 = random.nextDouble() * 3.1415926535897931 * 2.0;
 		tess_coord_t d15 = static_cast<tess_coord_t>(JavaMath::sin(d14));
 		tess_coord_t d16 = static_cast<tess_coord_t>(JavaMath::cos(d14));
-#endif
+		#endif
 
 		for (int_t j = 0; j < 4; j++)
 		{
@@ -385,11 +385,11 @@ void RenderGlobal::renderStars()
 		}
 	}
 
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+	#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 	tessellator->finishStaticMesh(starMesh);
-#else
+	#else
 	tessellator->draw();
-#endif
+	#endif
 }
 
 void RenderGlobal::changeWorld(World *world)
@@ -421,12 +421,12 @@ void RenderGlobal::loadRenderers()
 	Block::leaves->setGraphicsLevel(Config::isTreesFancy());
 	renderDistance = mc->gameSettings->renderDistance;
 	worldRenderersToUpdate.clear();
-#if (PLATFORM_PS2 || PLATFORM_WII) && PLATFORM_CENTER_VERTICAL_RENDERERS
+	#if (PLATFORM_PS2 || PLATFORM_WII) && PLATFORM_CENTER_VERTICAL_RENDERERS
 	verticalWindowInitialized = false;
-#endif
-#if !defined(PS2_PLATFORM)
+	#endif
+	#if !defined(PS2_PLATFORM)
 	worldRenderersQueuedForUpdate.clear();
-#endif
+	#endif
 	tileEntities.clear();
 
 	if (worldRenderers != nullptr)
@@ -440,20 +440,20 @@ void RenderGlobal::loadRenderers()
 		delete[] sortedWorldRenderers;
 	}
 
-#if PLATFORM_CONSOLE_LOW || PLATFORM_PC_LEGACY
+	#if PLATFORM_CONSOLE_LOW || PLATFORM_PC_LEGACY
 	// Keep the low-end profile's vertical grid fixed, but let PC render distance
 	// grow from its recommended default up to the configured profile maximum.
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	const int_t legacyRenderRadius = Config::limit(
 		Config::getRenderDistanceFine() / 16, 2, PLATFORM_VISIBLE_CHUNK_RADIUS);
 	renderChunksWide = legacyRenderRadius * 2 + 1;
 	renderChunksDeep = legacyRenderRadius * 2 + 1;
-#else
+	#else
 	renderChunksWide = PLATFORM_VISIBLE_CHUNK_DIAMETER;
 	renderChunksDeep = PLATFORM_VISIBLE_CHUNK_DIAMETER;
-#endif
+	#endif
 	renderChunksTall = PLATFORM_VERTICAL_CHUNK_COUNT;
-#else
+	#else
 	int_t j = 2 * Config::getRenderDistanceFine();
 	if (Config::isLoadChunksFar() && j < 512)
 		j = 512;
@@ -466,34 +466,34 @@ void RenderGlobal::loadRenderers()
 	prevReposY = -9999.0;
 	prevReposZ = -9999.0;
 	renderChunksWide = j / 16 + 1;
-#if PLATFORM_CENTER_VERTICAL_RENDERERS
+	#if PLATFORM_CENTER_VERTICAL_RENDERERS
 	// The moving vertical window is not part of the low-console profile. A
 	// platform can derive its horizontal grid from the render-distance table
 	// above and still refuse to hold a renderer slot for every section of the
 	// world column; markRenderersForNewPosition() centers the window on the
 	// player either way.
 	renderChunksTall = PLATFORM_VERTICAL_CHUNK_COUNT;
-#else
+	#else
 	renderChunksTall = WorldHeight::SECTION_COUNT;
-#endif
+	#endif
 	renderChunksDeep = j / 16 + 1;
-#endif
+	#endif
 
 	int_t totalRenderers = JavaArithmetic::intMul(JavaArithmetic::intMul(renderChunksWide, renderChunksTall), renderChunksDeep);
 	if (totalRenderers <= 0)
 		throw std::length_error("Invalid renderer grid size");
 	worldRenderersToUpdate.reserve(totalRenderers);
-#if !defined(PS2_PLATFORM)
+	#if !defined(PS2_PLATFORM)
 	worldRenderersQueuedForUpdate.reserve(totalRenderers);
-#endif
+	#endif
 	rendererUpdateCandidates.clear();
 	rendererUpdateCandidates.reserve(totalRenderers);
 	worldRenderers = new WorldRenderer *[totalRenderers]();
 	sortedWorldRenderers = new WorldRenderer *[totalRenderers]();
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	int_t k = 0;
-#endif
+	#endif
 	int_t l = 0;
 
 	minBlockX = 0;
@@ -510,27 +510,27 @@ void RenderGlobal::loadRenderers()
 			for (int_t l1 = 0; l1 < renderChunksDeep; l1++)
 			{
 				int_t index = (l1 * renderChunksTall + k1) * renderChunksWide + j1;
-#if PLATFORM_PC
+				#if PLATFORM_PC
 				const int_t rendererListId = glRenderListBase + k;
-#else
+				#else
 				const int_t rendererListId = 0;
-#endif
+				#endif
 				worldRenderers[index] = new WorldRenderer(worldObj, &tileEntities, j1 * 16, k1 * 16, l1 * 16, 16, rendererListId);
 
-#if PLATFORM_PC
+				#if PLATFORM_PC
 				if (occlusionEnabled)
 					worldRenderers[index]->glOcclusionQuery = glOcclusionQueryBase[l];
 				worldRenderers[index]->isWaitingOnOcclusionQuery = false;
-#endif
+				#endif
 				worldRenderers[index]->isVisible = true;
 				worldRenderers[index]->isInFrustum = true;
 				worldRenderers[index]->chunkIndex = l++;
 				worldRenderers[index]->markDirty();
 				sortedWorldRenderers[index] = worldRenderers[index];
 				enqueueRendererUpdate(worldRenderers[index]);
-#if PLATFORM_PC
+				#if PLATFORM_PC
 				k += 3;
-#endif
+				#endif
 			}
 		}
 	}
@@ -565,9 +565,9 @@ void RenderGlobal::setAllRenderersVisible()
 		if (renderer != nullptr)
 		{
 			renderer->isVisible = true;
-#if PLATFORM_PC
+			#if PLATFORM_PC
 			renderer->isWaitingOnOcclusionQuery = false;
-#endif
+			#endif
 		}
 	}
 }
@@ -597,20 +597,20 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 	TileEntityRenderer::staticPlayerY = entityliving->lastTickPosY + (entityliving->posY - entityliving->lastTickPosY) * (double)f;
 	TileEntityRenderer::staticPlayerZ = entityliving->lastTickPosZ + (entityliving->posZ - entityliving->lastTickPosZ) * (double)f;
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	// Vanilla 1.2.5 keeps the lightmap active for the complete entity pass.
 	// Entity meshes use the current secondary texture coordinate rather than
 	// carrying a lightmap UV per vertex, so the stage must be active before
 	// RenderManager starts updating those coordinates.
 	if (mc != nullptr && mc->entityRenderer != nullptr)
 		mc->entityRenderer->enableLightmap(static_cast<double>(f));
-#endif
+	#endif
 
 	std::vector<Entity *> &list = worldObj->getLoadedEntityList();
 	countEntitiesTotal = (int_t)list.size();
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+	#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 	platformProfileEntityFrame(countEntitiesTotal);
-#endif
+	#endif
 
 	for (int_t i = 0; i < (int_t)worldObj->weatherEffects.size(); i++)
 	{
@@ -620,21 +620,21 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 		countEntitiesRendered++;
 		if (entity->isInRangeToRenderVec3D(vec3d))
 		{
-#if PLATFORM_PROFILE_RENDER_PHASES
+			#if PLATFORM_PROFILE_RENDER_PHASES
 			const std::uint32_t cycWeatherDraw = platformProfileRenderPhaseBegin();
-#endif
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#endif
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			const std::uint32_t prof3WeatherDrawStart = platformProfileRenderPhaseBegin();
 			const PlatformDrawSnapshot weatherDrawStart = platformProfileDrawSnapshot();
-#endif
+			#endif
 			RenderManager::instance->renderEntity(entity, f);
-#if PLATFORM_PROFILE_RENDER_PHASES
+			#if PLATFORM_PROFILE_RENDER_PHASES
 			platformProfileRenderPhaseEnd(cycWeatherDraw, PlatformRenderPhase::EntityDraw);
 			platformProfileEntityDraw(cycWeatherDraw, entity);
-#endif
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#endif
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityDrawDetailed(prof3WeatherDrawStart, weatherDrawStart, entity);
-#endif
+			#endif
 		}
 	}
 
@@ -646,16 +646,16 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 		// (possibly freed) memory -> "jump to unaligned address" crash.
 		if (entity1 == nullptr || entity1->isDead)
 			continue;
-#if PLATFORM_SKIP_WORLD_ENTITIES
+		#if PLATFORM_SKIP_WORLD_ENTITIES
 		if (entity1 != mc->renderViewEntity)
 			continue;
-#endif
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+		#endif
+		#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 		platformProfileEntityCandidate();
 		if (entity1->ignoreFrustumCheck)
 			platformProfileEntitySpecialBypass();
-#endif
-#if PLATFORM_LIMIT_ENTITY_RENDER_DISTANCE
+		#endif
+		#if PLATFORM_LIMIT_ENTITY_RENDER_DISTANCE
 		if (entity1 != mc->renderViewEntity && !entity1->ignoreFrustumCheck && dynamic_cast<EntityLiving *>(entity1) != nullptr)
 		{
 			const float dx = static_cast<float>(entity1->posX - vec3d->xCoord);
@@ -663,32 +663,32 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 			const float radius = PLATFORM_ENTITY_RENDER_RADIUS_BLOCKS;
 			if (dx * dx + dz * dz > radius * radius)
 			{
-	#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
-			platformProfileEntityCull(PlatformEntityCullReason::Distance);
-#endif
+				#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+				platformProfileEntityCull(PlatformEntityCullReason::Distance);
+				#endif
 				continue;
 			}
 		}
-#endif
+		#endif
 		if (!entity1->isInRangeToRenderVec3D(vec3d))
 		{
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityCull(PlatformEntityCullReason::Range);
-#endif
+			#endif
 			continue;
 		}
 		if (!entity1->ignoreFrustumCheck && !icamera->isBoundingBoxInFrustum(entity1->boundingBox))
 		{
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityCull(PlatformEntityCullReason::Frustum);
-#endif
+			#endif
 			continue;
 		}
 		if (entity1 == mc->renderViewEntity && !mc->gameSettings->thirdPersonView && !mc->renderViewEntity->isPlayerSleeping())
 		{
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityCull(PlatformEntityCullReason::SelfHidden);
-#endif
+			#endif
 			continue;
 		}
 
@@ -698,46 +698,46 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 		if (l >= WorldHeight::HEIGHT)
 			l = WorldHeight::MAX_Y;
 
-#if PLATFORM_SKIP_WORLD_ENTITIES
+		#if PLATFORM_SKIP_WORLD_ENTITIES
 		const bool forceRenderViewEntity = entity1 == mc->renderViewEntity && mc->gameSettings->thirdPersonView;
-#else
+		#else
 		const bool forceRenderViewEntity = false;
-#endif
+		#endif
 		if (forceRenderViewEntity || worldObj->blockExists(MathHelper::floor_double(entity1->posX), l, MathHelper::floor_double(entity1->posZ)))
 		{
 			countEntitiesRendered++;
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityRendered();
-#endif
-#if PLATFORM_PROFILE_RENDER_PHASES
+			#endif
+			#if PLATFORM_PROFILE_RENDER_PHASES
 			const std::uint32_t cycEntDraw = platformProfileRenderPhaseBegin();
-#endif
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#endif
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			const std::uint32_t prof3EntityDrawStart = platformProfileRenderPhaseBegin();
 			const PlatformDrawSnapshot entityDrawStart = platformProfileDrawSnapshot();
-#endif
+			#endif
 			RenderManager::instance->renderEntity(entity1, f);
-#if PLATFORM_PROFILE_RENDER_PHASES
+			#if PLATFORM_PROFILE_RENDER_PHASES
 			platformProfileRenderPhaseEnd(cycEntDraw, PlatformRenderPhase::EntityDraw);
 			platformProfileEntityDraw(cycEntDraw, entity1);
-#endif
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#endif
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityDrawDetailed(prof3EntityDrawStart, entityDrawStart, entity1);
-#endif
+			#endif
 		}
 		else
 		{
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 			platformProfileEntityCull(PlatformEntityCullReason::MissingChunk);
-#endif
+			#endif
 		}
 	}
 
 	RenderHelper::enableStandardItemLighting();
 
-#if PLATFORM_PROFILE_RENDER_PHASES
+	#if PLATFORM_PROFILE_RENDER_PHASES
 	const std::uint32_t cycTileDraw = platformProfileRenderPhaseBegin();
-#endif
+	#endif
 	for (size_t k = 0; k < tileEntities.size(); )
 	{
 		TileEntity *tileEntity = tileEntities[k];
@@ -751,14 +751,14 @@ void RenderGlobal::renderEntities(Vec3D *vec3d, ICamera *icamera, float f)
 		TileEntityRenderer::instance.renderTileEntity(tileEntity, f);
 		++k;
 	}
-#if PLATFORM_PROFILE_RENDER_PHASES
+	#if PLATFORM_PROFILE_RENDER_PHASES
 	platformProfileRenderPhaseEnd(cycTileDraw, PlatformRenderPhase::TileEntityDraw);
-#endif
+	#endif
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	if (mc != nullptr && mc->entityRenderer != nullptr)
 		mc->entityRenderer->disableLightmap(static_cast<double>(f));
-#endif
+	#endif
 }
 
 void RenderGlobal::markAllRenderersDirty()
@@ -853,10 +853,10 @@ void RenderGlobal::remapCenteredVerticalRendererSlots(int_t newStartSection)
 		}
 	}
 
-#if (PLATFORM_PS2 || PLATFORM_WII) && MC_LOG_LEVEL > 2
+	#if (PLATFORM_PS2 || PLATFORM_WII) && MC_LOG_LEVEL > 2
 	MC_LOG_DEBUG("render", "vertical shift reused=%d recycled=%d start=%d->%d\n",
-		(int)reused, (int)recycled, (int)verticalStartSection, (int)newStartSection);
-#endif
+				 (int)reused, (int)recycled, (int)verticalStartSection, (int)newStartSection);
+	#endif
 }
 #endif
 
@@ -876,16 +876,16 @@ void RenderGlobal::markRenderersForNewPosition(int_t i, int_t j, int_t k)
 	int_t l = renderChunksWide * 16;
 	int_t i1 = l / 2;
 
-#if PLATFORM_CENTER_VERTICAL_RENDERERS
+	#if PLATFORM_CENTER_VERTICAL_RENDERERS
 	// Keep the renderer objects that still represent the same world sections.
 	// Console windows favour terrain below the player and move only when the
 	// player reaches a guard edge, avoiding section-boundary oscillation.
 	int_t startSection = 0;
-#if PLATFORM_PS2 || PLATFORM_WII
+	#if PLATFORM_PS2 || PLATFORM_WII
 	startSection = chooseConsoleVerticalStartSection(j + 8);
 	if (verticalWindowInitialized)
 		remapCenteredVerticalRendererSlots(startSection);
-#else
+	#else
 	int_t centerSection = JavaArithmetic::intShr(j + 8, 4);
 	startSection = centerSection - (renderChunksTall / 2);
 	if (startSection < 0)
@@ -893,12 +893,12 @@ void RenderGlobal::markRenderersForNewPosition(int_t i, int_t j, int_t k)
 	if (startSection > WorldHeight::SECTION_COUNT - renderChunksTall)
 		startSection = WorldHeight::SECTION_COUNT - renderChunksTall;
 	remapCenteredVerticalRendererSlots(startSection);
-#endif
+	#endif
 	verticalStartSection = startSection;
-#if PLATFORM_PS2 || PLATFORM_WII
+	#if PLATFORM_PS2 || PLATFORM_WII
 	verticalWindowInitialized = true;
-#endif
-#endif
+	#endif
+	#endif
 
 	for (int_t j1 = 0; j1 < renderChunksWide; j1++)
 	{
@@ -934,11 +934,11 @@ void RenderGlobal::markRenderersForNewPosition(int_t i, int_t j, int_t k)
 
 			for (int_t l2 = 0; l2 < renderChunksTall; l2++)
 			{
-#if PLATFORM_CENTER_VERTICAL_RENDERERS
+				#if PLATFORM_CENTER_VERTICAL_RENDERERS
 				int_t i3 = (verticalStartSection + l2) * 16;
-#else
+				#else
 				int_t i3 = l2 * 16;
-#endif
+				#endif
 
 				if (i3 < minBlockY)
 					minBlockY = i3;
@@ -958,15 +958,15 @@ void RenderGlobal::markRenderersForNewPosition(int_t i, int_t j, int_t k)
 
 void RenderGlobal::enqueueRendererUpdate(WorldRenderer *worldrenderer)
 {
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	if (worldrenderer == nullptr || worldrenderer->queuedForUpdate)
 		return;
 	worldrenderer->queuedForUpdate = true;
 	worldRenderersToUpdate.push_back(worldrenderer);
-#else
+	#else
 	if (worldrenderer != nullptr && worldRenderersQueuedForUpdate.insert(worldrenderer).second)
 		worldRenderersToUpdate.push_back(worldrenderer);
-#endif
+	#endif
 }
 
 #if PLATFORM_PS2 || PLATFORM_WII
@@ -978,14 +978,14 @@ void RenderGlobal::enqueueRendererUpdatePriority(WorldRenderer *worldrenderer)
 	// Block edits are tiny, but a console queue can already contain many
 	// slow chunk-build jobs. Put edited sections first so breaking/placing a
 	// block updates visually without waiting behind terrain streaming.
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	if (!worldrenderer->queuedForUpdate)
 	{
 		worldrenderer->queuedForUpdate = true;
 		worldRenderersToUpdate.insert(worldRenderersToUpdate.begin(), worldrenderer);
 		return;
 	}
-#else
+	#else
 	auto it = worldRenderersQueuedForUpdate.find(worldrenderer);
 	if (it == worldRenderersQueuedForUpdate.end())
 	{
@@ -993,7 +993,7 @@ void RenderGlobal::enqueueRendererUpdatePriority(WorldRenderer *worldrenderer)
 		worldRenderersToUpdate.insert(worldRenderersToUpdate.begin(), worldrenderer);
 		return;
 	}
-#endif
+	#endif
 
 	auto vit = std::find(worldRenderersToUpdate.begin(), worldRenderersToUpdate.end(), worldrenderer);
 	if (vit != worldRenderersToUpdate.end() && vit != worldRenderersToUpdate.begin())
@@ -1008,11 +1008,11 @@ void RenderGlobal::dequeueRendererUpdate(WorldRenderer *worldrenderer)
 {
 	if (worldrenderer == nullptr)
 		return;
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	worldrenderer->queuedForUpdate = false;
-#else
+	#else
 	worldRenderersQueuedForUpdate.erase(worldrenderer);
-#endif
+	#endif
 }
 
 void RenderGlobal::compactRendererUpdateQueue()
@@ -1039,14 +1039,14 @@ bool RenderGlobal::isRendererUpdateMoving(EntityLiving *entityliving)
 
 	constexpr double maxDifference = 0.001;
 	const bool movingNow = entityliving->isJumping || entityliving->isSneaking() ||
-		std::fabs((double)entityliving->swingProgress) > maxDifference ||
-		std::fabs((double)entityliving->moveStrafing) > maxDifference ||
-		std::fabs((double)entityliving->moveForward) > maxDifference ||
-		std::fabs(entityliving->posX - entityliving->prevPosX) > maxDifference ||
-		std::fabs(entityliving->posY - entityliving->prevPosY) > maxDifference ||
-		std::fabs(entityliving->posZ - entityliving->prevPosZ) > maxDifference ||
-		std::fabs((double)(entityliving->rotationYaw - entityliving->prevRotationYaw)) > maxDifference ||
-		std::fabs((double)(entityliving->rotationPitch - entityliving->prevRotationPitch)) > maxDifference;
+	std::fabs((double)entityliving->swingProgress) > maxDifference ||
+	std::fabs((double)entityliving->moveStrafing) > maxDifference ||
+	std::fabs((double)entityliving->moveForward) > maxDifference ||
+	std::fabs(entityliving->posX - entityliving->prevPosX) > maxDifference ||
+	std::fabs(entityliving->posY - entityliving->prevPosY) > maxDifference ||
+	std::fabs(entityliving->posZ - entityliving->prevPosZ) > maxDifference ||
+	std::fabs((double)(entityliving->rotationYaw - entityliving->prevRotationYaw)) > maxDifference ||
+	std::fabs((double)(entityliving->rotationPitch - entityliving->prevRotationPitch)) > maxDifference;
 
 	const uint64_t nowMs = PlatformCompat::getMonotonicMicros() / 1000ULL;
 	if (movingNow)
@@ -1096,18 +1096,18 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 		renderersSkippingRenderPass = 0;
 	}
 
-#if PLATFORM_FLOAT_VERTEX_MATH
+	#if PLATFORM_FLOAT_VERTEX_MATH
 	using render_sort_real_t = float;
-#else
+	#else
 	using render_sort_real_t = double;
-#endif
+	#endif
 	const render_sort_real_t partialTicks = static_cast<render_sort_real_t>(d);
 	const render_sort_real_t d1 = static_cast<render_sort_real_t>(entityliving->lastTickPosX) +
-		(static_cast<render_sort_real_t>(entityliving->posX) - static_cast<render_sort_real_t>(entityliving->lastTickPosX)) * partialTicks;
+	(static_cast<render_sort_real_t>(entityliving->posX) - static_cast<render_sort_real_t>(entityliving->lastTickPosX)) * partialTicks;
 	const render_sort_real_t d2 = static_cast<render_sort_real_t>(entityliving->lastTickPosY) +
-		(static_cast<render_sort_real_t>(entityliving->posY) - static_cast<render_sort_real_t>(entityliving->lastTickPosY)) * partialTicks;
+	(static_cast<render_sort_real_t>(entityliving->posY) - static_cast<render_sort_real_t>(entityliving->lastTickPosY)) * partialTicks;
 	const render_sort_real_t d3 = static_cast<render_sort_real_t>(entityliving->lastTickPosZ) +
-		(static_cast<render_sort_real_t>(entityliving->posZ) - static_cast<render_sort_real_t>(entityliving->lastTickPosZ)) * partialTicks;
+	(static_cast<render_sort_real_t>(entityliving->posZ) - static_cast<render_sort_real_t>(entityliving->lastTickPosZ)) * partialTicks;
 
 	const render_sort_real_t d4 = static_cast<render_sort_real_t>(entityliving->posX - prevSortX);
 	const render_sort_real_t d5 = static_cast<render_sort_real_t>(entityliving->posY - prevSortY);
@@ -1118,11 +1118,11 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 		prevSortX = entityliving->posX;
 		prevSortY = entityliving->posY;
 		prevSortZ = entityliving->posZ;
-#if PLATFORM_CONSOLE_LOW
+		#if PLATFORM_CONSOLE_LOW
 		const int_t preloadedBlocks = 0;
-#else
+		#else
 		const int_t preloadedBlocks = Config::getPreloadedChunks() * 16;
-#endif
+		#endif
 		const render_sort_real_t reposX = static_cast<render_sort_real_t>(entityliving->posX - prevReposX);
 		const render_sort_real_t reposY = static_cast<render_sort_real_t>(entityliving->posY - prevReposY);
 		const render_sort_real_t reposZ = static_cast<render_sort_real_t>(entityliving->posZ - prevReposZ);
@@ -1145,10 +1145,10 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 	// Keep the display-list cache below its high-water mark before the per-frame
 	// mesher starts asking for new terrain buffers. This prevents a full cache
 	// from turning an ordinary walk across chunk boundaries into missing terrain.
-#ifdef WII_PLATFORM
+	#ifdef WII_PLATFORM
 	if (i == 0)
 		evictWiiMeshCache(entityliving);
-#endif
+	#endif
 
 	RenderHelper::disableStandardItemLighting();
 	if (i == 0 && Config::isSmoothFps())
@@ -1156,21 +1156,21 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 
 	int_t k = 0;
 
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	if (i == 0)
 		updatePcLegacySectionVisibility(entityliving);
-#endif
-#if PLATFORM_PS2
+	#endif
+	#if PLATFORM_PS2
 	if (i == 0)
 		updatePs2SectionVisibility(entityliving);
-#endif
+	#endif
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	const bool useOcclusion = occlusionEnabled
-		&& mc != nullptr
-		&& mc->gameSettings != nullptr
-		&& mc->gameSettings->advancedOpengl
-		&& !mc->gameSettings->anaglyph;
+	&& mc != nullptr
+	&& mc->gameSettings != nullptr
+	&& mc->gameSettings->advancedOpengl
+	&& !mc->gameSettings->anaglyph;
 
 	if (useOcclusion && i == 0)
 	{
@@ -1265,12 +1265,12 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 					accumulatedZ += translateZ;
 				}
 
-#if !defined(PS2_PLATFORM) && !defined(WII_PLATFORM)
+				#if !defined(PS2_PLATFORM) && !defined(WII_PLATFORM)
 				renderBeginOcclusionQuery(renderer->glOcclusionQuery);
 				renderer->callOcclusionQueryList();
 				renderEndOcclusionQuery();
 				renderer->isWaitingOnOcclusionQuery = true;
-#endif
+				#endif
 			}
 
 			renderPopMatrix();
@@ -1317,10 +1317,10 @@ int_t RenderGlobal::sortAndRender(EntityLiving *entityliving, int_t i, double d)
 		k += renderSortedRenderers(0, totalRenderers, i, d);
 	}
 
-#else
+	#else
 	const int_t totalRenderers = renderChunksWide * renderChunksTall * renderChunksDeep;
 	k += renderSortedRenderers(0, totalRenderers, i, d);
-#endif
+	#endif
 
 	return k;
 }
@@ -1354,35 +1354,35 @@ void RenderGlobal::checkOcclusionQueryResult(int_t i, int_t j, double playerX, d
 
 int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 {
-#if PLATFORM_SKIP_TRANSPARENT_WORLD_PASS
+	#if PLATFORM_SKIP_TRANSPARENT_WORLD_PASS
 	// Low-console profile: skip alpha/water pass for now. The opaque terrain pass
 	// is the useful one and pass 1 costs a lot of bandwidth/CPU time.
 	if (k != 0)
 		return 0;
-#endif
+	#endif
 	renderBatchRenderers.clear();
 
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	const bool useOcclusion = occlusionEnabled
-		&& mc != nullptr
-		&& mc->gameSettings != nullptr
-		&& mc->gameSettings->advancedOpengl
-		&& !mc->gameSettings->anaglyph;
-#else
+	&& mc != nullptr
+	&& mc->gameSettings != nullptr
+	&& mc->gameSettings->advancedOpengl
+	&& !mc->gameSettings->anaglyph;
+	#else
 	const bool useOcclusion = false;
-#endif
+	#endif
 
 	int_t l = 0;
 	for (int_t i1 = i; i1 < j; i1++)
 	{
 		WorldRenderer *sortedRenderer = sortedWorldRenderers[i1];
-#if PLATFORM_PC_LEGACY
+		#if PLATFORM_PC_LEGACY
 		const bool cpuOccluded = !sortedRenderer->pcLegacyCpuVisible;
-#elif PLATFORM_PS2
+		#elif PLATFORM_PS2
 		const bool cpuOccluded = PLATFORM_CPU_SECTION_OCCLUSION && !sortedRenderer->ps2CpuVisible;
-#else
+		#else
 		const bool cpuOccluded = false;
-#endif
+		#endif
 		if (k == 0)
 		{
 			renderersLoaded++;
@@ -1408,20 +1408,20 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 			(useOcclusion && !sortedRenderer->isVisible))
 			continue;
 
-#if PLATFORM_PS2 || defined(WII_PLATFORM)
+		#if PLATFORM_PS2 || defined(WII_PLATFORM)
 		// Native console terrain uses the renderer itself as the draw contract.
 		// Visibility/pass checks above are sufficient; Wii resolves a GX handle
 		// later when RenderList submits the batch.
 		renderBatchRenderers.push_back(sortedRenderer);
 		l++;
-#else
+		#else
 		int_t j1 = sortedRenderer->getGLCallListForPass(k);
 		if (j1 >= 0)
 		{
 			renderBatchRenderers.push_back(sortedRenderer);
 			l++;
 		}
-#endif
+		#endif
 	}
 
 	EntityLiving *entityliving = mc->renderViewEntity;
@@ -1435,7 +1435,7 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 	// out at the section boundary. No-op where nothing culls by eye.
 	renderTerrainSetViewerPosition(d1, d2, d3);
 
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	// PS2: bypass desktop display-list batching and the GL matrix stack. Cached
 	// section vertices are local to their WorldRenderer, so renderPassCached()
 	// can build the full section-to-camera translation directly into the native
@@ -1458,7 +1458,7 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 		renderedNow++;
 	}
 
-#ifdef PS2_RENDER_STATS
+	#ifdef PS2_RENDER_STATS
 	// Pass 1 (water/ice/glass) was never instrumented: every counter above is
 	// gated on k == 0. Without it there is no way to tell "the section was never
 	// submitted" (culled, no mesh yet, or dropped by the cap) from "it was
@@ -1485,13 +1485,13 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 					visiblePendingSkip++;
 			}
 			MC_LOG_DEBUG("ps2", "terrain pass0 rendered=%d/%d total=%d loaded=%d skip=%d"
-			       " dirtySkipped=%d visibleDirtySkipped=%d clip=%d occ=%d pending=%d\n",
-			       (int)renderedNow, (int)PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS,
-			       (int)totalRenderers,
-			       (int)renderersLoaded, (int)renderersSkippingRenderPass,
-			       (int)pendingSkip, (int)visiblePendingSkip,
-			       (int)renderersBeingClipped, (int)renderersBeingOccluded,
-			       (int)worldRenderersToUpdate.size());
+			" dirtySkipped=%d visibleDirtySkipped=%d clip=%d occ=%d pending=%d\n",
+			(int)renderedNow, (int)PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS,
+						 (int)totalRenderers,
+						 (int)renderersLoaded, (int)renderersSkippingRenderPass,
+						 (int)pendingSkip, (int)visiblePendingSkip,
+						 (int)renderersBeingClipped, (int)renderersBeingOccluded,
+						 (int)worldRenderersToUpdate.size());
 		}
 		else
 		{
@@ -1507,17 +1507,17 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 					culled++;
 			}
 			MC_LOG_DEBUG("ps2", "terrain pass1 rendered=%d/%d total=%d withGeom=%d culled=%d listed=%d pending=%d\n",
-			       (int)renderedNow, (int)PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS,
-			       (int)totalRenderers, (int)withGeom, (int)culled, (int)l,
-			       (int)worldRenderersToUpdate.size());
+						 (int)renderedNow, (int)PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS,
+						 (int)totalRenderers, (int)withGeom, (int)culled, (int)l,
+						 (int)worldRenderersToUpdate.size());
 		}
 	}
-#endif
+	#endif
 
 	return renderedNow;
-#endif
+	#endif
 
-#if !PLATFORM_PS2
+	#if !PLATFORM_PS2
 	int_t k1 = 0;
 	for (int_t l1 = 0; l1 < 4; l1++)
 		allRenderLists[l1]->reset();
@@ -1544,7 +1544,7 @@ int_t RenderGlobal::renderSortedRenderers(int_t i, int_t j, int_t k, double d)
 
 	renderAllRenderLists(k, d);
 	return l;
-#endif
+	#endif
 }
 
 void RenderGlobal::updateClouds()
@@ -1629,11 +1629,11 @@ void RenderGlobal::renderSky(float f)
 	renderColor3f(f1, f2, f3);
 	if (Config::isSkyEnabled()) // OptiFine: Sky OFF (sol/luna/estrellas siguen visibles)
 	{
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+		#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 		renderStaticMeshDraw(skyMesh);
-#else
+		#else
 		renderCallDisplayList(glSkyList);
-#endif
+		#endif
 	}
 	renderDisable(RenderCapability::Fog);
 	renderDisable(RenderCapability::AlphaTest);
@@ -1750,11 +1750,11 @@ void RenderGlobal::renderSky(float f)
 		float starBlue = f17;
 		applyPs2LegacyAtmosphereRgb(mc, starRed, starGreen, starBlue);
 		renderColor4f(starRed, starGreen, starBlue, f17);
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+		#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 		renderStaticMeshDraw(starMesh);
-#else
+		#else
 		renderCallDisplayList(starGLCallList);
-#endif
+		#endif
 	}
 
 	renderColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1772,11 +1772,11 @@ void RenderGlobal::renderSky(float f)
 	{
 		renderPushMatrix();
 		renderTranslate(0.0f, 12.0f, 0.0f);
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+		#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 		renderStaticMeshDraw(skyMesh2);
-#else
+		#else
 		renderCallDisplayList(glSkyList2);
-#endif
+		#endif
 		renderPopMatrix();
 
 		float voidHalfWidth = 1.0f;
@@ -1816,11 +1816,11 @@ void RenderGlobal::renderSky(float f)
 	{
 		renderPushMatrix();
 		renderTranslate(0.0f, -((float)(horizonOffset - 16.0)), 0.0f);
-#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
+		#if defined(PS2_PLATFORM) || defined(WII_PLATFORM)
 		renderStaticMeshDraw(skyMesh2);
-#else
+		#else
 		renderCallDisplayList(glSkyList2);
-#endif
+		#endif
 		renderPopMatrix();
 	}
 	renderEnable(RenderCapability::Texture2D);
@@ -2145,7 +2145,7 @@ namespace
 			if (worked >= maxUpdates)
 				return true;
 			return PLATFORM_CHUNK_BUILD_BUDGET_MS > 0 &&
-			       spentUs >= (long long)PLATFORM_CHUNK_BUILD_BUDGET_MS * 1000LL;
+			spentUs >= (long long)PLATFORM_CHUNK_BUILD_BUDGET_MS * 1000LL;
 		}
 
 		// Returns true when the renderer actually meshed, i.e. when the call
@@ -2163,9 +2163,9 @@ namespace
 			if (t1 > t0)
 			{
 				spentUs += (long long)(t1 - t0);
-#if defined(WII_PLATFORM) && MC_LOG_LEVEL >= 2
+				#if defined(WII_PLATFORM) && MC_LOG_LEVEL >= 2
 				platformProfileMesh((long long)(t1 - t0) * 1000LL);
-#endif
+				#endif
 			}
 			return true;
 		}
@@ -2176,22 +2176,25 @@ namespace
 #if PLATFORM_PS2 && defined(PS2_RENDER_STATS)
 namespace
 {
-long ps2UpdateNoSlotBreaks = 0;
+	long ps2UpdateNoSlotBreaks = 0;
 }
 #endif
 
 bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 {
-#if PLATFORM_PS2
+	#if PLATFORM_PC
+	updateDynamicTorchLight();
+	#endif
+	#if PLATFORM_PS2
 	const bool ps2MeshPressure = trimPs2MeshCache(entityliving);
-#endif
+	#endif
 	if (worldRenderersToUpdate.empty())
 		return true;
 
 	int_t requestedUpdateLimit = std::max(1, Config::getUpdatesPerFrame());
 	if (Config::isDynamicUpdates() && !isRendererUpdateMoving(entityliving)) requestedUpdateLimit = requestedUpdateLimit * 3;
 
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	pcLegacyRunMeshScheduler(
 		worldRenderersToUpdate,
 		entityliving,
@@ -2199,7 +2202,7 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 		requestedUpdateLimit);
 	compactRendererUpdateQueue();
 	return worldRenderersToUpdate.empty();
-#elif PLATFORM_MESH_BUDGET
+	#elif PLATFORM_MESH_BUDGET
 	// Console terrain builds are incremental and subject to a measured wall-clock
 	// budget. OptiFine may request more work while the player is stationary, but
 	// it never gets to raise the platform's hard per-frame ceiling.
@@ -2212,14 +2215,14 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	{
 		if (candidate == nullptr || !candidate->needsUpdate)
 			continue;
-#if PLATFORM_PS2
+		#if PLATFORM_PS2
 		if ((flag || ps2MeshPressure) && !candidate->isInFrustum && !candidate->isTerrainBuildInProgress())
 			continue;
-#else
+		#else
 		if (flag && !candidate->isInFrustum)
 			continue;
-#endif
-#if PLATFORM_DEFER_MESH_DURING_POPULATE
+		#endif
+		#if PLATFORM_DEFER_MESH_DURING_POPULATE
 		if (!candidate->isTerrainBuildInProgress() && candidate->hasPublishedTerrain() &&
 			candidate->worldObj != nullptr &&
 			candidate->distanceToEntitySquared(entityliving) > PLATFORM_POPULATE_MESH_DEFER_DISTANCE_SQ)
@@ -2229,7 +2232,7 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 			if (candidate->worldObj->isChunkPopulationPendingForRendering(chunkX, chunkZ))
 				continue;
 		}
-#endif
+		#endif
 		rendererUpdateCandidates.push_back(candidate);
 	}
 
@@ -2237,14 +2240,14 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	{
 		return renderer->isTerrainBuildInProgress();
 	};
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+	#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 	int_t profileActiveBuilders = 0;
 	for (WorldRenderer *candidate : rendererUpdateCandidates)
 	{
 		if (candidate != nullptr && candidate->isTerrainBuildInProgress())
 			++profileActiveBuilders;
 	}
-#endif
+	#endif
 
 	const int_t attemptLimit = std::max(1, (int_t)PLATFORM_RENDERER_UPDATE_CANDIDATES_PER_FRAME);
 	const float movementX = (float)entityliving->motionX;
@@ -2301,8 +2304,8 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	if (sortedCandidateCount > 0)
 	{
 		std::partial_sort(rendererUpdateCandidates.begin(),
-			rendererUpdateCandidates.begin() + sortedCandidateCount,
-			rendererUpdateCandidates.end(), rendererPriority);
+						  rendererUpdateCandidates.begin() + sortedCandidateCount,
+						  rendererUpdateCandidates.end(), rendererPriority);
 	}
 
 	int_t attempted = 0;
@@ -2311,9 +2314,9 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	// The lease reserve below only applies while an edit is actually waiting;
 	// otherwise streaming keeps every slot. Urgent renderers sort first.
 	const bool urgentPending = sortedCandidateCount > 0 &&
-		rendererUpdateCandidates[0] != nullptr &&
-		rendererUpdateCandidates[0]->urgentRebuild &&
-		rendererUpdateCandidates[0]->needsUpdate;
+	rendererUpdateCandidates[0] != nullptr &&
+	rendererUpdateCandidates[0]->urgentRebuild &&
+	rendererUpdateCandidates[0]->needsUpdate;
 
 	// Urgent lane: a section the player just edited is run to completion on
 	// its own wall-clock budget, before the shared per-frame budget is spent on
@@ -2322,6 +2325,8 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	if (PLATFORM_URGENT_MESH_BUDGET_MS > 0)
 	{
 		long long urgentSpentUs = 0;
+		int urgentChunkCount = 0;
+		int urgentVerticesBuilt = 0;
 		for (std::size_t i = 0; i < sortedCandidateCount; ++i)
 		{
 			WorldRenderer *candidate = rendererUpdateCandidates[i];
@@ -2334,27 +2339,28 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 			}
 			if (!buildInProgress(candidate) && !renderTerrainStagingHasFreeSlot())
 			{
-#if PLATFORM_PS2
+				#if PLATFORM_PS2
 				// The reserve lease only holds while an edit is already waiting;
 				// when the edit arrives with every lease taken, take one back.
 				if (!evictStreamingBuildForUrgent(entityliving))
 					break;
-#else
+				#else
 				break;
-#endif
+				#endif
 			}
 
+			urgentChunkCount++;
 			attempted++;
 			// Step cap as well as the clock: on a board where the monotonic
 			// clock reads 0 (see PS2_CHUNK_BUILD_BUDGET_MS) the clock alone
 			// would never stop this loop.
 			int_t urgentSteps = 0;
-#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
+			#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
 			const bool urgentBuildActiveAtEntry = candidate->isTerrainBuildInProgress();
 			const unsigned int urgentRestartsAtEntry = candidate->ps2BuildRestarts;
 			int_t urgentOwnerSteps = 0;
-#endif
-#if PLATFORM_PS2
+			#endif
+			#if PLATFORM_PS2
 			// A completed section waits at publish while another renderer owns
 			// the sort/pack pipeline, and that owner only advances on its own
 			// scheduler step. Left alone, the edit sat behind a streaming
@@ -2364,82 +2370,88 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 			// needs anyway.
 			int_t ownerPacketPolls = 0;
 			for (WorldRenderer *owner = WorldRenderer::ps2PublishOwnerRenderer();
-			     owner != nullptr && owner != candidate && urgentSteps < (int_t)PLATFORM_URGENT_MESH_STEP_CAP &&
-			     urgentSpentUs < (long long)PLATFORM_URGENT_MESH_BUDGET_MS * 1000LL;
-			     owner = WorldRenderer::ps2PublishOwnerRenderer())
-			{
-				++urgentSteps;
-#if MC_LOG_LEVEL >= 2
-				++urgentOwnerSteps;
-#endif
-				const uint64_t t0 = PlatformCompat::getMonotonicMicros();
-				owner->updateRenderer();
-				const uint64_t t1 = PlatformCompat::getMonotonicMicros();
-				if (t1 > t0)
-					urgentSpentUs += (long long)(t1 - t0);
-				if (!owner->needsUpdate)
-					completed++;
-				if (!owner->lastTerrainBuildStepDidWork())
-				{
-					// Its pack is in flight on VU0; see the poll note below.
-					if (WorldRenderer::ps2PublishOwnerRenderer() == owner && ownerPacketPolls < 256)
-					{
-						++ownerPacketPolls;
-						--urgentSteps;
-						continue;
-					}
-					break;
-				}
-			}
-#endif
-#if PLATFORM_PS2
-			// The VU0 pack at the end of a build runs in batches, and a step
-			// that finds the batch still in flight reports no work. On the
-			// streaming path that is a yield to the next frame; here it would
-			// make the edit take one frame per batch. Poll again instead; the
-			// batch is microseconds, and the clock still bounds the lane.
-			int_t urgentPacketPolls = 0;
-#endif
-			while (candidate->needsUpdate && urgentSteps < (int_t)PLATFORM_URGENT_MESH_STEP_CAP &&
-			       urgentSpentUs < (long long)PLATFORM_URGENT_MESH_BUDGET_MS * 1000LL)
-			{
-				++urgentSteps;
-				const uint64_t t0 = PlatformCompat::getMonotonicMicros();
-				candidate->updateRenderer();
-				const uint64_t t1 = PlatformCompat::getMonotonicMicros();
-				if (t1 > t0)
-					urgentSpentUs += (long long)(t1 - t0);
-				if (!candidate->lastTerrainBuildStepDidWork())
-				{
-#if PLATFORM_PS2
-					if (WorldRenderer::ps2PublishOwnerRenderer() == candidate && urgentPacketPolls < 256)
-					{
-						++urgentPacketPolls;
-						--urgentSteps;
-						continue;
-					}
-#endif
-					break;
-				}
-			}
-#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
-			{
-				const uint64_t nowUs = PlatformCompat::getMonotonicMicros();
-				MC_LOG_DEBUG("ps2", "urgent mesh: %s after %ld us (steps=%d owner=%d polls=%d lane=%lld us"
-					" activeIn=%d activeOut=%d restarts=%u pending=%d)\n",
-					candidate->needsUpdate ? "yielded" : "published",
-					(long)(nowUs > candidate->urgentMarkUs ? nowUs - candidate->urgentMarkUs : 0),
-					(int)urgentSteps, (int)urgentOwnerSteps, (int)urgentPacketPolls, urgentSpentUs,
-					urgentBuildActiveAtEntry ? 1 : 0, candidate->isTerrainBuildInProgress() ? 1 : 0,
-					candidate->ps2BuildRestarts - urgentRestartsAtEntry,
-					(int)worldRenderersToUpdate.size());
-			}
-#endif
-			if (!candidate->needsUpdate)
-			{
-				candidate->urgentRebuild = false;
-				completed++;
-			}
+				 owner != nullptr && owner != candidate && urgentSteps < (int_t)PLATFORM_URGENT_MESH_STEP_CAP &&
+				 urgentSpentUs < (long long)PLATFORM_URGENT_MESH_BUDGET_MS * 1000LL;
+			owner = WorldRenderer::ps2PublishOwnerRenderer())
+				 {
+					 ++urgentSteps;
+					 #if MC_LOG_LEVEL >= 2
+					 ++urgentOwnerSteps;
+					 #endif
+					 const uint64_t t0 = PlatformCompat::getMonotonicMicros();
+					 owner->updateRenderer();
+					 const uint64_t t1 = PlatformCompat::getMonotonicMicros();
+					 if (t1 > t0)
+						 urgentSpentUs += (long long)(t1 - t0);
+					 if (!owner->needsUpdate)
+						 completed++;
+					 if (!owner->lastTerrainBuildStepDidWork())
+					 {
+						 // Its pack is in flight on VU0; see the poll note below.
+						 if (WorldRenderer::ps2PublishOwnerRenderer() == owner && ownerPacketPolls < 256)
+						 {
+							 ++ownerPacketPolls;
+							 --urgentSteps;
+							 continue;
+						 }
+						 break;
+					 }
+				 }
+				 #endif
+				 #if PLATFORM_PS2
+				 // The VU0 pack at the end of a build runs in batches, and a step
+				 // that finds the batch still in flight reports no work. On the
+				 // streaming path that is a yield to the next frame; here it would
+				 // make the edit take one frame per batch. Poll again instead; the
+				 // batch is microseconds, and the clock still bounds the lane.
+				 int_t urgentPacketPolls = 0;
+				 #endif
+				 while (candidate->needsUpdate && urgentSteps < (int_t)PLATFORM_URGENT_MESH_STEP_CAP &&
+					 urgentSpentUs < (long long)PLATFORM_URGENT_MESH_BUDGET_MS * 1000LL)
+				 {
+					 ++urgentSteps;
+					 const uint64_t t0 = PlatformCompat::getMonotonicMicros();
+					 candidate->updateRenderer();
+					 const uint64_t t1 = PlatformCompat::getMonotonicMicros();
+					 if (t1 > t0)
+						 urgentSpentUs += (long long)(t1 - t0);
+					 if (!candidate->lastTerrainBuildStepDidWork())
+					 {
+						 #if PLATFORM_PS2
+						 if (WorldRenderer::ps2PublishOwnerRenderer() == candidate && urgentPacketPolls < 256)
+						 {
+							 ++urgentPacketPolls;
+							 --urgentSteps;
+							 continue;
+						 }
+						 #endif
+						 break;
+					 }
+				 }
+				 #if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
+				 {
+					 const uint64_t nowUs = PlatformCompat::getMonotonicMicros();
+					 MC_LOG_DEBUG("ps2", "urgent mesh: %s after %ld us (steps=%d owner=%d polls=%d lane=%lld us"
+					 " activeIn=%d activeOut=%d restarts=%u pending=%d)\n",
+				   candidate->needsUpdate ? "yielded" : "published",
+				   (long)(nowUs > candidate->urgentMarkUs ? nowUs - candidate->urgentMarkUs : 0),
+								  (int)urgentSteps, (int)urgentOwnerSteps, (int)urgentPacketPolls, urgentSpentUs,
+								  urgentBuildActiveAtEntry ? 1 : 0, candidate->isTerrainBuildInProgress() ? 1 : 0,
+								  candidate->ps2BuildRestarts - urgentRestartsAtEntry,
+				   (int)worldRenderersToUpdate.size());
+				 }
+				 #endif
+				 if (!candidate->needsUpdate)
+				 {
+					 candidate->urgentRebuild = false;
+					 completed++;
+				 }
+		}
+
+		if (urgentChunkCount > 0)
+		{
+			printf("[PERF] Urgent meshing queue: %d chunks | Tiempo total remallado: %.2f ms | Vértices generados: %d\n",
+				   urgentChunkCount, (double)urgentSpentUs / 1000.0, urgentVerticesBuilt);
 		}
 	}
 
@@ -2464,15 +2476,15 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 			{
 				if (!renderTerrainStagingHasFreeSlot())
 				{
-#if PLATFORM_PS2 && defined(PS2_RENDER_STATS)
+					#if PLATFORM_PS2 && defined(PS2_RENDER_STATS)
 					++ps2UpdateNoSlotBreaks;
-#endif
+					#endif
 					break;
 				}
 				// Keep one lease for the urgent lane, so an edit never waits for
 				// a streaming build to finish before it can even start.
 				if (urgentPending && !candidate->urgentRebuild && PLATFORM_MESH_STAGING_RESERVE_FOR_URGENT > 0 &&
-				    renderTerrainStagingSlotsInUse() >= PLATFORM_MESH_STAGING_SLOTS - PLATFORM_MESH_STAGING_RESERVE_FOR_URGENT)
+					renderTerrainStagingSlotsInUse() >= PLATFORM_MESH_STAGING_SLOTS - PLATFORM_MESH_STAGING_RESERVE_FOR_URGENT)
 					continue;
 			}
 
@@ -2483,26 +2495,29 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 			{
 				candidate->urgentRebuild = false;
 				completed++;
+				#if PLATFORM_PS2 || PLATFORM_WII
+				urgentVerticesBuilt += (int)candidate->getTotalMeshVertexCount();
+				#endif
 			}
 		}
 	}
 
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	// updateRenderers may leave the single VU0 finalize owner between batches.
 	// Drain micro mode before returning to the render pipeline, where matrix,
 	// culling and fallback paths issue VU0 macro/COP2 instructions. The packed
 	// result remains in VU0 data RAM and is collected by the owner on its next
 	// scheduler step without keeping micro mode active across rendering.
 	(void)ps2_vu0_mesh_finalize_drain();
-#endif
+	#endif
 
 	compactRendererUpdateQueue();
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+	#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
 	platformProfileMeshScheduler(attempted, meshBudget.worked, completed, profileActiveBuilders,
-		static_cast<int>(worldRenderersToUpdate.size()));
-#endif
+								 static_cast<int>(worldRenderersToUpdate.size()));
+	#endif
 
-#if PLATFORM_PS2 && defined(PS2_RENDER_STATS)
+	#if PLATFORM_PS2 && defined(PS2_RENDER_STATS)
 	static int s_ps2UpdateLogTick = 0;
 	static long s_ps2UpdateAttempts = 0;
 	static long s_ps2UpdateSteps = 0;
@@ -2516,18 +2531,18 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 		// cand/slots are this frame's; noSlot counts the frames in the period
 		// where the scheduler stopped for want of a staging lease.
 		MC_LOG_DEBUG("ps2", "renderer work: attempts=%ld steps=%ld complete=%ld pending=%d cand=%d slots=%d/%d noSlot=%ld\n",
-			s_ps2UpdateAttempts, s_ps2UpdateSteps, s_ps2UpdateCompleted,
-			(int)worldRenderersToUpdate.size(), (int)rendererUpdateCandidates.size(),
-			renderTerrainStagingSlotsInUse(), (int)PLATFORM_MESH_STAGING_SLOTS, ps2UpdateNoSlotBreaks);
+					 s_ps2UpdateAttempts, s_ps2UpdateSteps, s_ps2UpdateCompleted,
+			   (int)worldRenderersToUpdate.size(), (int)rendererUpdateCandidates.size(),
+					 renderTerrainStagingSlotsInUse(), (int)PLATFORM_MESH_STAGING_SLOTS, ps2UpdateNoSlotBreaks);
 		s_ps2UpdateAttempts = 0;
 		s_ps2UpdateSteps = 0;
 		s_ps2UpdateCompleted = 0;
 		ps2UpdateNoSlotBreaks = 0;
 	}
-#endif
+	#endif
 
 	return worldRenderersToUpdate.empty();
-#else
+	#else
 	// OptiFine C6 chooses work by distance instead of sorting/rebuilding the
 	// complete dirty list. Sections outside the frustum are penalized fourfold,
 	// and active block/item interaction makes nearby dirty sections immediate.
@@ -2613,8 +2628,44 @@ bool RenderGlobal::updateRenderers(EntityLiving *entityliving, bool flag)
 	// queue-empty here would therefore multiply the configured Chunk Updates limit
 	// several times in one frame. The remaining work stays queued for the next one.
 	return true;
-#endif
+	#endif
 }
+
+#if PLATFORM_PC
+void RenderGlobal::updateDynamicTorchLight()
+{
+	if (dynamicTorchLightWorld != worldObj)
+	{
+		dynamicTorchLightWorld = worldObj;
+		dynamicTorchLightActive = false;
+	}
+
+	EntityPlayerSP *player = mc != nullptr ? mc->thePlayer : nullptr;
+	ItemStack *heldItem = player != nullptr ? player->getCurrentEquippedItem() : nullptr;
+	const bool active = worldObj != nullptr && player != nullptr && Block::torchWood != nullptr &&
+		heldItem != nullptr && heldItem->itemID == Block::torchWood->blockID;
+	const int_t lightX = active ? MathHelper::floor_double(player->posX) : 0;
+	const int_t lightY = active ? MathHelper::floor_double(player->posY + 1.0) : 0;
+	const int_t lightZ = active ? MathHelper::floor_double(player->posZ) : 0;
+	if (active == dynamicTorchLightActive &&
+		(!active || (lightX == dynamicTorchLightX && lightY == dynamicTorchLightY && lightZ == dynamicTorchLightZ)))
+		return;
+
+	constexpr int_t lightRadius = 11;
+	if (dynamicTorchLightActive)
+		markBlockRangeNeedsUpdate(dynamicTorchLightX - lightRadius, dynamicTorchLightY - lightRadius,
+			dynamicTorchLightZ - lightRadius, dynamicTorchLightX + lightRadius,
+			dynamicTorchLightY + lightRadius, dynamicTorchLightZ + lightRadius);
+	if (active)
+		markBlockRangeNeedsUpdate(lightX - lightRadius, lightY - lightRadius, lightZ - lightRadius,
+			lightX + lightRadius, lightY + lightRadius, lightZ + lightRadius);
+
+	dynamicTorchLightActive = active;
+	dynamicTorchLightX = lightX;
+	dynamicTorchLightY = lightY;
+	dynamicTorchLightZ = lightZ;
+}
+#endif
 
 void RenderGlobal::drawBlockBreaking(EntityPlayer *entityplayer, MovingObjectPosition *movingobjectposition, int_t i, ItemStack *itemstack, float f)
 {
@@ -2761,7 +2812,20 @@ void RenderGlobal::drawOutlinedBoundingBox(AxisAlignedBB *axisalignedbb)
 
 void RenderGlobal::markBlockAndNeighborsNeedsUpdate(int_t i, int_t j, int_t k)
 {
-	markRenderersInRange(i - 1, j - 1, k - 1, i + 1, j + 1, k + 1);
+	int_t minY = j - 1;
+	if (worldObj != nullptr && j > 0 && (j & 15) == 0)
+	{
+		int_t blockBelow = worldObj->getBlockId(i, j - 1, k);
+		int_t currentBlock = worldObj->getBlockId(i, j, k);
+		if (blockBelow > 0 && blockBelow < Block::BLOCK_REGISTRY_SIZE && Block::opaqueCubeLookup[blockBelow])
+		{
+			if (currentBlock > 0 && Block::opaqueCubeLookup[currentBlock])
+			{
+				minY = j;
+			}
+		}
+	}
+	markRenderersInRange(i - 1, minY, k - 1, i + 1, j + 1, k + 1);
 }
 
 void RenderGlobal::markBlockRangeNeedsUpdate(int_t i, int_t j, int_t k, int_t l, int_t i1, int_t j1)
@@ -2771,7 +2835,7 @@ void RenderGlobal::markBlockRangeNeedsUpdate(int_t i, int_t j, int_t k, int_t l,
 
 void RenderGlobal::onChunkPublished(int_t chunkX, int_t chunkZ)
 {
-#if PLATFORM_PS2
+	#if PLATFORM_PS2
 	if (worldRenderers == nullptr)
 		return;
 
@@ -2786,10 +2850,10 @@ void RenderGlobal::onChunkPublished(int_t chunkX, int_t chunkZ)
 		if (!renderer->needsUpdate)
 			renderer->markDirty();
 	}
-#else
+	#else
 	(void)chunkX;
 	(void)chunkZ;
-#endif
+	#endif
 }
 
 void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_t i1, int_t j1) // func_949_a
@@ -2801,6 +2865,10 @@ void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_
 	int_t k2 = MathHelper::bucketInt(i1, 16);
 	int_t l2 = MathHelper::bucketInt(j1, 16);
 
+	const int_t centerSectionX = MathHelper::bucketInt((i + l) / 2, 16);
+	const int_t centerSectionY = MathHelper::bucketInt((j + i1) / 2, 16);
+	const int_t centerSectionZ = MathHelper::bucketInt((k + j1) / 2, 16);
+
 	for (int_t i3 = k1; i3 <= j2; i3++)
 	{
 		int_t j3 = i3 % renderChunksWide;
@@ -2809,7 +2877,7 @@ void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_
 
 		for (int_t k3 = l1; k3 <= k2; k3++)
 		{
-#if PLATFORM_CENTER_VERTICAL_RENDERERS
+			#if PLATFORM_CENTER_VERTICAL_RENDERERS
 			// The vertical window does not wrap by modulo: slot 0 holds world
 			// section verticalStartSection. Map section->slot the same way as
 			// markRenderersForNewPosition(), and skip sections outside the window
@@ -2817,11 +2885,11 @@ void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_
 			int_t l3 = k3 - verticalStartSection;
 			if (l3 < 0 || l3 >= renderChunksTall)
 				continue;
-#else
+			#else
 			int_t l3 = k3 % renderChunksTall;
 			if (l3 < 0)
 				l3 += renderChunksTall;
-#endif
+			#endif
 
 			for (int_t i4 = i2; i4 <= l2; i4++)
 			{
@@ -2832,7 +2900,10 @@ void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_
 				int_t k4 = (j4 * renderChunksTall + l3) * renderChunksWide + j3;
 				WorldRenderer *worldrenderer = worldRenderers[k4];
 
-#if PLATFORM_PS2 || PLATFORM_WII
+				const int sectionDiff = (i3 != centerSectionX ? 1 : 0) + (k3 != centerSectionY ? 1 : 0) + (i4 != centerSectionZ ? 1 : 0);
+				const bool isDirectFaceNeighbor = (sectionDiff <= 1);
+
+				#if PLATFORM_PS2 || PLATFORM_WII
 				// Active builds must observe every mutation so deferred population
 				// can mark one final rebuild without throwing away the current staging
 				// mesh. markDirty() itself decides whether to coalesce or restart; a
@@ -2849,29 +2920,33 @@ void RenderGlobal::markRenderersInRange(int_t i, int_t j, int_t k, int_t l, int_
 					// See the urgent lane in updateRenderers(). The edit scope is
 					// what separates it from a spring or a gravel vein settling at
 					// the same distance while terrain streams in.
-					if (PLATFORM_URGENT_MESH_DISTANCE_SQ > 0.0f && mc != nullptr &&
-					    mc->renderViewEntity != nullptr &&
-					    worldObj != nullptr && worldObj->isMarkingFromPlayerEdit() &&
-					    worldrenderer->distanceToEntitySquared(mc->renderViewEntity) <= PLATFORM_URGENT_MESH_DISTANCE_SQ)
+					// Primary and direct face-adjacent neighbor sections are marked urgent
+					// so revealed neighbor faces update immediately without a 1-second delay,
+					// while edge/corner diagonal sections remain in the streaming queue.
+					if (isDirectFaceNeighbor &&
+						PLATFORM_URGENT_MESH_DISTANCE_SQ > 0.0f && mc != nullptr &&
+						mc->renderViewEntity != nullptr &&
+						playerEdit &&
+						worldrenderer->distanceToEntitySquared(mc->renderViewEntity) <= PLATFORM_URGENT_MESH_DISTANCE_SQ)
 					{
-#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
+						#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
 						worldrenderer->urgentMarkUs = PlatformCompat::getMonotonicMicros();
-#endif
+						#endif
 						worldrenderer->urgentRebuild = true;
 					}
 				}
-#elif PLATFORM_PC_LEGACY
+				#elif PLATFORM_PC_LEGACY
 				// Legacy keeps only one queue entry, but active incremental builds still
 				// need to hear every mutation so population can be coalesced safely.
 				enqueueRendererUpdate(worldrenderer);
 				worldrenderer->markDirty();
-#else
+				#else
 				if (!worldrenderer->needsUpdate)
 				{
 					enqueueRendererUpdate(worldrenderer);
 					worldrenderer->markDirty();
 				}
-#endif
+				#endif
 			}
 		}
 	}
@@ -2888,13 +2963,13 @@ void RenderGlobal::playSound(const jstring &s, double d, double d1, double d2, f
 }
 
 void RenderGlobal::spawnParticle(const jstring &name, double x, double y, double z,
-                                 double velocityX, double velocityY, double velocityZ)
+								 double velocityX, double velocityY, double velocityZ)
 {
 	(void)spawnParticleEffect(name, x, y, z, velocityX, velocityY, velocityZ);
 }
 
 EntityFX *RenderGlobal::spawnParticleEffect(const jstring &name, double x, double y, double z,
-                                            double velocityX, double velocityY, double velocityZ)
+											double velocityX, double velocityY, double velocityZ)
 {
 	if (mc == nullptr || mc->renderViewEntity == nullptr || mc->effectRenderer == nullptr)
 		return nullptr;
@@ -2950,8 +3025,8 @@ EntityFX *RenderGlobal::spawnParticleEffect(const jstring &name, double x, doubl
 	{
 		EntityCritFX *crit = new EntityCritFX(worldObj, x, y, z, velocityX, velocityY, velocityZ);
 		crit->setParticleColor(crit->getParticleRed() * 0.3f,
-		                       crit->getParticleGreen() * 0.8f,
-		                       crit->getParticleBlue());
+							   crit->getParticleGreen() * 0.8f,
+							   crit->getParticleBlue());
 		crit->setParticleTextureIndex(crit->getParticleTextureIndex() + 1);
 		effect = crit;
 	}
@@ -2964,7 +3039,7 @@ EntityFX *RenderGlobal::spawnParticleEffect(const jstring &name, double x, doubl
 	{
 		EntitySpellParticleFX *spell = new EntitySpellParticleFX(worldObj, x, y, z, 0.0, 0.0, 0.0);
 		spell->setParticleColor(static_cast<float>(velocityX), static_cast<float>(velocityY),
-		                        static_cast<float>(velocityZ));
+								static_cast<float>(velocityZ));
 		effect = spell;
 	}
 	else if (name == "spell")
@@ -3011,7 +3086,7 @@ EntityFX *RenderGlobal::spawnParticleEffect(const jstring &name, double x, doubl
 	{
 		if (Config::isAnimatedRedstone())
 			effect = new EntityReddustFX(worldObj, x, y, z, static_cast<float>(velocityX),
-			                          static_cast<float>(velocityY), static_cast<float>(velocityZ));
+										 static_cast<float>(velocityY), static_cast<float>(velocityZ));
 	}
 	else if (name == "snowballpoof")
 		effect = new EntityBreakingFX(worldObj, x, y, z, Item::snowball);
@@ -3041,10 +3116,10 @@ EntityFX *RenderGlobal::spawnParticleEffect(const jstring &name, double x, doubl
 	{
 		int_t blockId = -1;
 		if (String::tryParseInt(jstring(name.substr(10)), blockId) && blockId >= 0 && blockId < Block::BLOCK_REGISTRY_SIZE &&
-		    Block::blocksList[blockId] != nullptr)
+			Block::blocksList[blockId] != nullptr)
 		{
 			effect = new EntityDiggingFX(worldObj, x, y, z, velocityX, velocityY, velocityZ,
-			                             Block::blocksList[blockId], 0, 0);
+										 Block::blocksList[blockId], 0, 0);
 		}
 	}
 
@@ -3119,15 +3194,15 @@ void RenderGlobal::doNothingWithTileEntity(int_t i, int_t j, int_t k, TileEntity
 			WorldRenderer *renderer = worldRenderers[idx];
 			if (renderer == nullptr)
 				continue;
-#if PLATFORM_PC_LEGACY
+			#if PLATFORM_PC_LEGACY
 			pcLegacyStaticTileEntityUnpublish(tileentity, renderer);
 			renderer->pcLegacyStaticTileEntityRenderers.erase(
 				std::remove(renderer->pcLegacyStaticTileEntityRenderers.begin(), renderer->pcLegacyStaticTileEntityRenderers.end(), tileentity),
-				renderer->pcLegacyStaticTileEntityRenderers.end());
-#endif
+															  renderer->pcLegacyStaticTileEntityRenderers.end());
+			#endif
 			renderer->tileEntityRenderers.erase(
 				std::remove(renderer->tileEntityRenderers.begin(), renderer->tileEntityRenderers.end(), tileentity),
-				renderer->tileEntityRenderers.end());
+												renderer->tileEntityRenderers.end());
 		}
 	}
 }
@@ -3138,304 +3213,304 @@ void RenderGlobal::playAuxSFX(EntityPlayer *entityplayer, int_t i, int_t j, int_
 
 	switch (i)
 	{
-	default:
-		break;
+		default:
+			break;
 
-	case 1000:
-		worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.click", 1.0f, 1.0f);
-		break;
-	case 1001:
-		worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.click", 1.0f, 1.2f);
-		break;
-	case 1002:
-		worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.bow", 1.0f, 1.2f);
-		break;
-	case 1003:
-		if (Math::random() < 0.5)
-			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "random.door_open", 1.0f, worldObj->rand.nextFloat() * 0.1f + 0.9f);
+		case 1000:
+			worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.click", 1.0f, 1.0f);
+			break;
+		case 1001:
+			worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.click", 1.0f, 1.2f);
+			break;
+		case 1002:
+			worldObj->playSoundEffect((double)j, (double)k, (double)l, "random.bow", 1.0f, 1.2f);
+			break;
+		case 1003:
+			if (Math::random() < 0.5)
+				worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "random.door_open", 1.0f, worldObj->rand.nextFloat() * 0.1f + 0.9f);
 		else
 			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "random.door_close", 1.0f, worldObj->rand.nextFloat() * 0.1f + 0.9f);
 		break;
-	case 1004:
-		worldObj->playSoundEffect((double)((float)j + 0.5f), (double)((float)k + 0.5f), (double)((float)l + 0.5f), "random.fizz", 0.5f, 2.6f + random.nextFloatDifference() * 0.8f);
-		break;
-	case 1005:
-		if (i1 >= 0 && i1 < Item::ITEM_LIST_SIZE && Item::itemsList[i1] != nullptr && dynamic_cast<ItemRecord *>(Item::itemsList[i1]) != nullptr)
-			worldObj->playRecord(((ItemRecord *)Item::itemsList[i1])->recordName, j, k, l);
+		case 1004:
+			worldObj->playSoundEffect((double)((float)j + 0.5f), (double)((float)k + 0.5f), (double)((float)l + 0.5f), "random.fizz", 0.5f, 2.6f + random.nextFloatDifference() * 0.8f);
+			break;
+		case 1005:
+			if (i1 >= 0 && i1 < Item::ITEM_LIST_SIZE && Item::itemsList[i1] != nullptr && dynamic_cast<ItemRecord *>(Item::itemsList[i1]) != nullptr)
+				worldObj->playRecord(((ItemRecord *)Item::itemsList[i1])->recordName, j, k, l);
 		else
 			worldObj->playRecord("", j, k, l);
 		break;
-	case 1007:
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.ghast.charge", 10.0f, random.nextFloatDifference() * 0.2f + 1.0f);
-		break;
-	case 1008:
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.ghast.fireball", 10.0f, random.nextFloatDifference() * 0.2f + 1.0f);
-		break;
-	case 1010:
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.wood", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
-		break;
-	case 1011:
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.metal", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
-		break;
-	case 1012:
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.woodbreak", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
-		break;
+		case 1007:
+			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.ghast.charge", 10.0f, random.nextFloatDifference() * 0.2f + 1.0f);
+			break;
+		case 1008:
+			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.ghast.fireball", 10.0f, random.nextFloatDifference() * 0.2f + 1.0f);
+			break;
+		case 1010:
+			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.wood", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
+			break;
+		case 1011:
+			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.metal", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
+			break;
+		case 1012:
+			worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "mob.zombie.woodbreak", 2.0f, random.nextFloatDifference() * 0.2f + 1.0f);
+			break;
 
-	case 2000:
-	{
-		int_t xDir = i1 % 3 - 1;
-		int_t zDir = (i1 / 3) % 3 - 1;
-		double baseX = (double)j + (double)xDir * 0.6 + 0.5;
-		double baseY = (double)k + 0.5;
-		double baseZ = (double)l + (double)zDir * 0.6 + 0.5;
-		for (int_t n = 0; n < 10; ++n)
+		case 2000:
 		{
-			double speed = random.nextDouble() * 0.2 + 0.01;
-			double px = baseX + (double)xDir * 0.01 + (random.nextDouble() - 0.5) * (double)zDir * 0.5;
-			double py = baseY + (random.nextDouble() - 0.5) * 0.5;
-			double pz = baseZ + (double)zDir * 0.01 + (random.nextDouble() - 0.5) * (double)xDir * 0.5;
-			double vx = (double)xDir * speed + random.nextGaussian() * 0.01;
-			double vy = -0.03 + random.nextGaussian() * 0.01;
-			double vz = (double)zDir * speed + random.nextGaussian() * 0.01;
-			spawnParticle("smoke", px, py, pz, vx, vy, vz);
-		}
-		return;
-	}
-
-	case 2001:
-	{
-		int_t blockId = i1 & 4095;
-		if (blockId > 0 && blockId < Block::BLOCK_REGISTRY_SIZE && Block::blocksList[blockId] != nullptr)
-		{
-			Block *block = Block::blocksList[blockId];
-			mc->sndManager->playSound(block->stepSound->getBreakSound(), (float)j + 0.5f, (float)k + 0.5f, (float)l + 0.5f,
-			                          (block->stepSound->getVolume() + 1.0f) / 2.0f, block->stepSound->getPitch() * 0.8f);
-		}
-		if (mc->effectRenderer != nullptr)
-			mc->effectRenderer->addBlockDestroyEffects(j, k, l, blockId, (i1 >> 12) & 255);
-		break;
-	}
-
-	case 2002:
-	{
-		double px = (double)j;
-		double py = (double)k;
-		double pz = (double)l;
-		jstring icon = "iconcrack_" + String::toString(Item::potion->shiftedIndex);
-		for (int_t n = 0; n < 8; ++n)
-		{
-			double vx = random.nextGaussian() * 0.15;
-			double vy = random.nextDouble() * 0.2;
-			double vz = random.nextGaussian() * 0.15;
-			spawnParticle(icon, px, py, pz, vx, vy, vz);
-		}
-
-		ItemPotion *potion = dynamic_cast<ItemPotion *>(Item::potion);
-		int_t color = Item::potion->getColorFromDamage(i1, 0);
-		float red = (float)((color >> 16) & 255) / 255.0f;
-		float green = (float)((color >> 8) & 255) / 255.0f;
-		float blue = (float)(color & 255) / 255.0f;
-		jstring particle = (potion != nullptr && potion->isEffectInstant(i1)) ? "instantSpell" : "spell";
-#if PLATFORM_FLOAT_VERTEX_MATH
-		constexpr float pi = 3.1415927f;
-		for (int_t n = 0; n < 100; ++n)
-		{
-			const float radius = random.nextDoubleFloat() * 4.0f;
-			const float angle = random.nextDoubleFloat() * pi * 2.0f;
-			const float vx = std::cos(angle) * radius;
-			const double vy = 0.01 + random.nextDouble() * 0.5;
-			const float vz = std::sin(angle) * radius;
-			EntityFX *effect = spawnParticleEffect(particle, px + static_cast<double>(vx) * 0.1, py + 0.3, pz + static_cast<double>(vz) * 0.1,
-			                                      static_cast<double>(vx), vy, static_cast<double>(vz));
-#else
-		constexpr double pi = 3.14159265358979323846;
-		for (int_t n = 0; n < 100; ++n)
-		{
-			double radius = random.nextDouble() * 4.0;
-			double angle = random.nextDouble() * pi * 2.0;
-			double vx = JavaMath::cos(angle) * radius;
-			double vy = 0.01 + random.nextDouble() * 0.5;
-			double vz = JavaMath::sin(angle) * radius;
-			EntityFX *effect = spawnParticleEffect(particle, px + vx * 0.1, py + 0.3, pz + vz * 0.1, vx, vy, vz);
-#endif
-			if (effect != nullptr)
+			int_t xDir = i1 % 3 - 1;
+			int_t zDir = (i1 / 3) % 3 - 1;
+			double baseX = (double)j + (double)xDir * 0.6 + 0.5;
+			double baseY = (double)k + 0.5;
+			double baseZ = (double)l + (double)zDir * 0.6 + 0.5;
+			for (int_t n = 0; n < 10; ++n)
 			{
-				float brightness = 0.75f + random.nextFloat() * 0.25f;
-				effect->setParticleColor(red * brightness, green * brightness, blue * brightness);
-				effect->multiplyVelocity((float)radius);
+				double speed = random.nextDouble() * 0.2 + 0.01;
+				double px = baseX + (double)xDir * 0.01 + (random.nextDouble() - 0.5) * (double)zDir * 0.5;
+				double py = baseY + (random.nextDouble() - 0.5) * 0.5;
+				double pz = baseZ + (double)zDir * 0.01 + (random.nextDouble() - 0.5) * (double)xDir * 0.5;
+				double vx = (double)xDir * speed + random.nextGaussian() * 0.01;
+				double vy = -0.03 + random.nextGaussian() * 0.01;
+				double vz = (double)zDir * speed + random.nextGaussian() * 0.01;
+				spawnParticle("smoke", px, py, pz, vx, vy, vz);
 			}
+			return;
 		}
-		worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "random.glass", 1.0f,
-		                          worldObj->rand.nextFloat() * 0.1f + 0.9f);
-		break;
+
+		case 2001:
+		{
+			int_t blockId = i1 & 4095;
+			if (blockId > 0 && blockId < Block::BLOCK_REGISTRY_SIZE && Block::blocksList[blockId] != nullptr)
+			{
+				Block *block = Block::blocksList[blockId];
+				mc->sndManager->playSound(block->stepSound->getBreakSound(), (float)j + 0.5f, (float)k + 0.5f, (float)l + 0.5f,
+										  (block->stepSound->getVolume() + 1.0f) / 2.0f, block->stepSound->getPitch() * 0.8f);
+			}
+			if (mc->effectRenderer != nullptr)
+				mc->effectRenderer->addBlockDestroyEffects(j, k, l, blockId, (i1 >> 12) & 255);
+			break;
+		}
+
+		case 2002:
+		{
+			double px = (double)j;
+			double py = (double)k;
+			double pz = (double)l;
+			jstring icon = "iconcrack_" + String::toString(Item::potion->shiftedIndex);
+			for (int_t n = 0; n < 8; ++n)
+			{
+				double vx = random.nextGaussian() * 0.15;
+				double vy = random.nextDouble() * 0.2;
+				double vz = random.nextGaussian() * 0.15;
+				spawnParticle(icon, px, py, pz, vx, vy, vz);
+			}
+
+			ItemPotion *potion = dynamic_cast<ItemPotion *>(Item::potion);
+			int_t color = Item::potion->getColorFromDamage(i1, 0);
+			float red = (float)((color >> 16) & 255) / 255.0f;
+			float green = (float)((color >> 8) & 255) / 255.0f;
+			float blue = (float)(color & 255) / 255.0f;
+			jstring particle = (potion != nullptr && potion->isEffectInstant(i1)) ? "instantSpell" : "spell";
+			#if PLATFORM_FLOAT_VERTEX_MATH
+			constexpr float pi = 3.1415927f;
+			for (int_t n = 0; n < 100; ++n)
+			{
+				const float radius = random.nextDoubleFloat() * 4.0f;
+				const float angle = random.nextDoubleFloat() * pi * 2.0f;
+				const float vx = std::cos(angle) * radius;
+				const double vy = 0.01 + random.nextDouble() * 0.5;
+				const float vz = std::sin(angle) * radius;
+				EntityFX *effect = spawnParticleEffect(particle, px + static_cast<double>(vx) * 0.1, py + 0.3, pz + static_cast<double>(vz) * 0.1,
+													   static_cast<double>(vx), vy, static_cast<double>(vz));
+				#else
+				constexpr double pi = 3.14159265358979323846;
+				for (int_t n = 0; n < 100; ++n)
+				{
+					double radius = random.nextDouble() * 4.0;
+					double angle = random.nextDouble() * pi * 2.0;
+					double vx = JavaMath::cos(angle) * radius;
+					double vy = 0.01 + random.nextDouble() * 0.5;
+					double vz = JavaMath::sin(angle) * radius;
+					EntityFX *effect = spawnParticleEffect(particle, px + vx * 0.1, py + 0.3, pz + vz * 0.1, vx, vy, vz);
+					#endif
+					if (effect != nullptr)
+					{
+						float brightness = 0.75f + random.nextFloat() * 0.25f;
+						effect->setParticleColor(red * brightness, green * brightness, blue * brightness);
+						effect->multiplyVelocity((float)radius);
+					}
+				}
+				worldObj->playSoundEffect((double)j + 0.5, (double)k + 0.5, (double)l + 0.5, "random.glass", 1.0f,
+										  worldObj->rand.nextFloat() * 0.1f + 0.9f);
+				break;
+			}
+
+			case 2003:
+			{
+				double px = (double)j + 0.5;
+				double py = (double)k;
+				double pz = (double)l + 0.5;
+				jstring icon = "iconcrack_" + String::toString(Item::eyeOfEnder->shiftedIndex);
+				for (int_t n = 0; n < 8; ++n)
+				{
+					double vx = random.nextGaussian() * 0.15;
+					double vy = random.nextDouble() * 0.2;
+					double vz = random.nextGaussian() * 0.15;
+					spawnParticle(icon, px, py, pz, vx, vy, vz);
+				}
+				#if PLATFORM_FLOAT_VERTEX_MATH
+				constexpr float pi = 3.1415927f;
+				for (float angle = 0.0f; angle < pi * 2.0f; angle += pi * 0.05f)
+				{
+					const float c = std::cos(angle);
+					const float s = std::sin(angle);
+					spawnParticle("portal", px + static_cast<double>(c) * 5.0, py - 0.4, pz + static_cast<double>(s) * 5.0,
+								  static_cast<double>(c) * -5.0, 0.0, static_cast<double>(s) * -5.0);
+					spawnParticle("portal", px + static_cast<double>(c) * 5.0, py - 0.4, pz + static_cast<double>(s) * 5.0,
+								  static_cast<double>(c) * -7.0, 0.0, static_cast<double>(s) * -7.0);
+				}
+				#else
+				constexpr double pi = 3.14159265358979323846;
+				for (double angle = 0.0; angle < pi * 2.0; angle += pi * 0.05)
+				{
+					double c = JavaMath::cos(angle);
+					double s = JavaMath::sin(angle);
+					spawnParticle("portal", px + c * 5.0, py - 0.4, pz + s * 5.0, c * -5.0, 0.0, s * -5.0);
+					spawnParticle("portal", px + c * 5.0, py - 0.4, pz + s * 5.0, c * -7.0, 0.0, s * -7.0);
+				}
+				#endif
+				return;
+			}
+
+			case 2004:
+				for (int_t n = 0; n < 20; ++n)
+				{
+					double px = (double)j + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
+					double py = (double)k + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
+					double pz = (double)l + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
+					worldObj->spawnParticle("smoke", px, py, pz, 0.0, 0.0, 0.0);
+					worldObj->spawnParticle("flame", px, py, pz, 0.0, 0.0, 0.0);
+				}
+				break;
+		}
 	}
 
-	case 2003:
-	{
-		double px = (double)j + 0.5;
-		double py = (double)k;
-		double pz = (double)l + 0.5;
-		jstring icon = "iconcrack_" + String::toString(Item::eyeOfEnder->shiftedIndex);
-		for (int_t n = 0; n < 8; ++n)
-		{
-			double vx = random.nextGaussian() * 0.15;
-			double vy = random.nextDouble() * 0.2;
-			double vz = random.nextGaussian() * 0.15;
-			spawnParticle(icon, px, py, pz, vx, vy, vz);
-		}
-#if PLATFORM_FLOAT_VERTEX_MATH
-		constexpr float pi = 3.1415927f;
-		for (float angle = 0.0f; angle < pi * 2.0f; angle += pi * 0.05f)
-		{
-			const float c = std::cos(angle);
-			const float s = std::sin(angle);
-			spawnParticle("portal", px + static_cast<double>(c) * 5.0, py - 0.4, pz + static_cast<double>(s) * 5.0,
-			              static_cast<double>(c) * -5.0, 0.0, static_cast<double>(s) * -5.0);
-			spawnParticle("portal", px + static_cast<double>(c) * 5.0, py - 0.4, pz + static_cast<double>(s) * 5.0,
-			              static_cast<double>(c) * -7.0, 0.0, static_cast<double>(s) * -7.0);
-		}
-#else
-		constexpr double pi = 3.14159265358979323846;
-		for (double angle = 0.0; angle < pi * 2.0; angle += pi * 0.05)
-		{
-			double c = JavaMath::cos(angle);
-			double s = JavaMath::sin(angle);
-			spawnParticle("portal", px + c * 5.0, py - 0.4, pz + s * 5.0, c * -5.0, 0.0, s * -5.0);
-			spawnParticle("portal", px + c * 5.0, py - 0.4, pz + s * 5.0, c * -7.0, 0.0, s * -7.0);
-		}
-#endif
-		return;
-	}
-
-	case 2004:
-		for (int_t n = 0; n < 20; ++n)
-		{
-			double px = (double)j + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
-			double py = (double)k + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
-			double pz = (double)l + 0.5 + ((double)worldObj->rand.nextFloat() - 0.5) * 2.0;
-			worldObj->spawnParticle("smoke", px, py, pz, 0.0, 0.0, 0.0);
-			worldObj->spawnParticle("flame", px, py, pz, 0.0, 0.0, 0.0);
-		}
-		break;
-	}
-}
-
-void RenderGlobal::clipRenderersByFrustrum(ICamera *icamera, float f)
-{
-	int_t total = renderChunksWide * renderChunksTall * renderChunksDeep;
-	for (int_t i = 0; i < total; i++)
-	{
-#if PLATFORM_PS2
-		// Re-test every section every frame, dropping vanilla's `& 0xf`.
-		//
-		// Vanilla only re-tests an ALREADY-ACCEPTED section once every 16 frames,
-		// which is the right trade on a desktop grid of ~2000 sections: the test
-		// is the cost there, and a stale accept merely draws a chunk that is cheap
-		// to draw. Both halves are false on console. The PS2 grid is 5x3x5 = 75,
-		// so testing all of them is 75 isBoxInFrustum calls (six float plane
-		// evaluations each, no doubles since ClippingHelper was rewritten), while
-		// a single stale accept costs ~400 EE vertex transforms that all die in
-		// the per-triangle clip outcodes.
-		//
-		// Measured 2026-07-27 in the stats build, camera at chunk-grid centre:
-		// "terrain pass0 rendered=30/64 total=72 skip=38 clip=4" -- only 4 of the
-		// 34 non-empty sections rejected, when roughly a third of them sit behind
-		// the camera -- against 7313 triangles/frame killed by the clip outcodes.
-		// Turning the camera is exactly when those stale accepts pile up, which is
-		// also when the frame time was worst.
-		//
-		// The skipAllRenderPasses() gate is dropped too, and that part is a
-		// CORRECTNESS fix, not a performance one. This pass runs before
-		// updateRenderers, so a section that finishes meshing later in the same
-		// frame was drawn by sortAndRender carrying frustum flags from whenever it
-		// last held geometry -- a different camera position, sometimes a different
-		// section entirely. A stale isFullyInFrustum then told the draw path to
-		// skip clipping for geometry that had since moved behind the camera, and
-		// the perspective divide smeared it across the screen as huge stretched
-		// polygons (1-5 sections per frame, which is why it looked random).
-		//
-		// The classification depends only on the section's box and the camera,
-		// never on whether a mesh exists, so testing an empty renderer is both
-		// valid and cheap: the full grid is 75 boxes against six float planes.
-		worldRenderers[i]->updateInFrustrum(icamera);
-#elif PLATFORM_WII
-		// Drop vanilla's `& 0xf` re-test throttle, but keep the
-		// skipAllRenderPasses() gate. The PS2 rationale above applies only in
-		// part here, and the two halves are worth separating.
-		//
-		// The throttle only ever applies to sections that are ALREADY accepted:
-		// the `!isInFrustum` half of vanilla's condition re-tests every rejected
-		// section every frame anyway. So dropping it adds one box test per
-		// section currently in view -- a few hundred -- and removes a window of
-		// up to 16 frames in which a section that has left the frustum keeps
-		// being submitted. Nothing downstream caps how many sections a Wii pass
-		// draws (PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS is read on the PS2 path
-		// only), so each stale accept is a whole GX display list replayed for
-		// nothing, and they pile up exactly while the camera is turning.
-		//
-		// The gate stays because it is not a staleness source. skipAllRenderPasses()
-		// returns false until a section has been meshed at least once, so a section
-		// that has never held geometry is still tested every frame; one that is
-		// initialised and empty is never drawn whatever its flag says, and testing
-		// it would only pay for the sections that are cheapest to reject.
-		//
-		// isFullyInFrustum is not involved: WorldRenderer::updateInFrustrum never
-		// sets it on Wii, so the correctness half of the PS2 note has no Wii
-		// equivalent to fix.
-		if (!worldRenderers[i]->skipAllRenderPasses())
-			worldRenderers[i]->updateInFrustrum(icamera);
-#else
-		if (!worldRenderers[i]->skipAllRenderPasses() && (!worldRenderers[i]->isInFrustum || (i + frustrumCheckOffset & 0xf) == 0))
-			worldRenderers[i]->updateInFrustrum(icamera);
-#endif
-	}
-
-	frustrumCheckOffset++;
-}
-
-bool RenderGlobal::isCloudFog(double x, double y, double z, float partialTicks)
-{
-	return false;
-}
-
-void RenderGlobal::clearWorldRenderers() // func_28137_f
-{
-	if (worldRenderers != nullptr)
+	void RenderGlobal::clipRenderersByFrustrum(ICamera *icamera, float f)
 	{
 		int_t total = renderChunksWide * renderChunksTall * renderChunksDeep;
 		for (int_t i = 0; i < total; i++)
 		{
-			delete worldRenderers[i];
+			#if PLATFORM_PS2
+			// Re-test every section every frame, dropping vanilla's `& 0xf`.
+			//
+			// Vanilla only re-tests an ALREADY-ACCEPTED section once every 16 frames,
+			// which is the right trade on a desktop grid of ~2000 sections: the test
+			// is the cost there, and a stale accept merely draws a chunk that is cheap
+			// to draw. Both halves are false on console. The PS2 grid is 5x3x5 = 75,
+			// so testing all of them is 75 isBoxInFrustum calls (six float plane
+			// evaluations each, no doubles since ClippingHelper was rewritten), while
+			// a single stale accept costs ~400 EE vertex transforms that all die in
+			// the per-triangle clip outcodes.
+			//
+			// Measured 2026-07-27 in the stats build, camera at chunk-grid centre:
+			// "terrain pass0 rendered=30/64 total=72 skip=38 clip=4" -- only 4 of the
+			// 34 non-empty sections rejected, when roughly a third of them sit behind
+			// the camera -- against 7313 triangles/frame killed by the clip outcodes.
+			// Turning the camera is exactly when those stale accepts pile up, which is
+			// also when the frame time was worst.
+			//
+			// The skipAllRenderPasses() gate is dropped too, and that part is a
+			// CORRECTNESS fix, not a performance one. This pass runs before
+			// updateRenderers, so a section that finishes meshing later in the same
+			// frame was drawn by sortAndRender carrying frustum flags from whenever it
+			// last held geometry -- a different camera position, sometimes a different
+			// section entirely. A stale isFullyInFrustum then told the draw path to
+			// skip clipping for geometry that had since moved behind the camera, and
+			// the perspective divide smeared it across the screen as huge stretched
+			// polygons (1-5 sections per frame, which is why it looked random).
+			//
+			// The classification depends only on the section's box and the camera,
+			// never on whether a mesh exists, so testing an empty renderer is both
+			// valid and cheap: the full grid is 75 boxes against six float planes.
+			worldRenderers[i]->updateInFrustrum(icamera);
+			#elif PLATFORM_WII
+			// Drop vanilla's `& 0xf` re-test throttle, but keep the
+			// skipAllRenderPasses() gate. The PS2 rationale above applies only in
+			// part here, and the two halves are worth separating.
+			//
+			// The throttle only ever applies to sections that are ALREADY accepted:
+			// the `!isInFrustum` half of vanilla's condition re-tests every rejected
+			// section every frame anyway. So dropping it adds one box test per
+			// section currently in view -- a few hundred -- and removes a window of
+			// up to 16 frames in which a section that has left the frustum keeps
+			// being submitted. Nothing downstream caps how many sections a Wii pass
+			// draws (PLATFORM_MAX_RENDERED_SECTIONS_PER_PASS is read on the PS2 path
+			// only), so each stale accept is a whole GX display list replayed for
+			// nothing, and they pile up exactly while the camera is turning.
+			//
+			// The gate stays because it is not a staleness source. skipAllRenderPasses()
+			// returns false until a section has been meshed at least once, so a section
+			// that has never held geometry is still tested every frame; one that is
+			// initialised and empty is never drawn whatever its flag says, and testing
+			// it would only pay for the sections that are cheapest to reject.
+			//
+			// isFullyInFrustum is not involved: WorldRenderer::updateInFrustrum never
+			// sets it on Wii, so the correctness half of the PS2 note has no Wii
+			// equivalent to fix.
+			if (!worldRenderers[i]->skipAllRenderPasses())
+				worldRenderers[i]->updateInFrustrum(icamera);
+			#else
+			if (!worldRenderers[i]->skipAllRenderPasses() && (!worldRenderers[i]->isInFrustum || (i + frustrumCheckOffset & 0xf) == 0))
+				worldRenderers[i]->updateInFrustrum(icamera);
+			#endif
 		}
-		delete[] worldRenderers;
-		worldRenderers = nullptr;
-	}
-	delete[] sortedWorldRenderers;
-	sortedWorldRenderers = nullptr;
-	std::vector<WorldRenderer *>().swap(worldRenderersToUpdate);
-#if !defined(PS2_PLATFORM)
-	std::unordered_set<WorldRenderer *>().swap(worldRenderersQueuedForUpdate);
-#endif
-	std::vector<TileEntity *>().swap(tileEntities);
-	std::vector<WorldRenderer *>().swap(renderBatchRenderers);
-	renderChunksWide = 0;
-	renderChunksTall = 0;
-	renderChunksDeep = 0;
-	worldRenderersCheckIndex = 0;
-}
 
-#if !PLATFORM_PS2
-void RenderGlobal::renderAllRenderLists(int_t pass, double partialTick)
-{
-	(void)pass;
-	if (mc != nullptr && mc->entityRenderer != nullptr)
-		mc->entityRenderer->enableLightmap(partialTick);
-	for (int_t i = 0; i < 4; i++)
-	{
-		if (allRenderLists[i] != nullptr)
-			allRenderLists[i]->render();
+		frustrumCheckOffset++;
 	}
-	if (mc != nullptr && mc->entityRenderer != nullptr)
-		mc->entityRenderer->disableLightmap(partialTick);
-}
-#endif
+
+	bool RenderGlobal::isCloudFog(double x, double y, double z, float partialTicks)
+	{
+		return false;
+	}
+
+	void RenderGlobal::clearWorldRenderers() // func_28137_f
+	{
+		if (worldRenderers != nullptr)
+		{
+			int_t total = renderChunksWide * renderChunksTall * renderChunksDeep;
+			for (int_t i = 0; i < total; i++)
+			{
+				delete worldRenderers[i];
+			}
+			delete[] worldRenderers;
+			worldRenderers = nullptr;
+		}
+		delete[] sortedWorldRenderers;
+		sortedWorldRenderers = nullptr;
+		std::vector<WorldRenderer *>().swap(worldRenderersToUpdate);
+		#if !defined(PS2_PLATFORM)
+		std::unordered_set<WorldRenderer *>().swap(worldRenderersQueuedForUpdate);
+		#endif
+		std::vector<TileEntity *>().swap(tileEntities);
+		std::vector<WorldRenderer *>().swap(renderBatchRenderers);
+		renderChunksWide = 0;
+		renderChunksTall = 0;
+		renderChunksDeep = 0;
+		worldRenderersCheckIndex = 0;
+	}
+
+	#if !PLATFORM_PS2
+	void RenderGlobal::renderAllRenderLists(int_t pass, double partialTick)
+	{
+		(void)pass;
+		if (mc != nullptr && mc->entityRenderer != nullptr)
+			mc->entityRenderer->enableLightmap(partialTick);
+		for (int_t i = 0; i < 4; i++)
+		{
+			if (allRenderLists[i] != nullptr)
+				allRenderLists[i]->render();
+		}
+		if (mc != nullptr && mc->entityRenderer != nullptr)
+			mc->entityRenderer->disableLightmap(partialTick);
+	}
+	#endif

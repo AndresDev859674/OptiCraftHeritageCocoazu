@@ -10,11 +10,129 @@
 #include "GuiPlayerInfo.h"
 #include "GuiTextField.h"
 #include "Minecraft.h"
+#include "PlayerControllerCreative.h"
+#include "PlayerControllerSP.h"
 #include "NetClientHandler.h"
+#include "World.h"
+#include "WorldInfo.h"
 #include "java/String.h"
 #include "java/System.h"
 #include "pc/lwjgl/Keyboard.h"
 #include "pc/lwjgl/Mouse.h"
+#include <cctype>
+#include <sstream>
+
+namespace
+{
+    std::string lowerChatToken(std::string token)
+    {
+        std::transform(token.begin(), token.end(), token.begin(), [](unsigned char value)
+        {
+            return static_cast<char>(std::tolower(value));
+        });
+        return token;
+    }
+
+    bool executeSingleplayerCommand(Minecraft *mc, const std::string &message)
+    {
+        if (mc == nullptr || mc->theWorld == nullptr || mc->thePlayer == nullptr)
+            return false;
+
+        std::istringstream input(message.substr(1));
+        std::string command;
+        if (!(input >> command))
+        {
+            mc->ingameGUI->addChatMessage("Usage: /time set <ticks> or /gamemode <survival|creative|spectator> [username]");
+            return true;
+        }
+        command = lowerChatToken(command);
+
+        if (command == "time")
+        {
+            std::string action;
+            std::string value;
+            std::string extra;
+            if (!(input >> action >> value) || lowerChatToken(action) != "set" || (input >> extra))
+            {
+                mc->ingameGUI->addChatMessage("Usage: /time set <ticks>");
+                return true;
+            }
+
+            try
+            {
+                std::size_t consumed = 0;
+                const long_t ticks = static_cast<long_t>(std::stoll(value, &consumed));
+                if (consumed != value.size())
+                    throw std::invalid_argument("invalid ticks");
+                mc->theWorld->setWorldTime(ticks);
+                mc->ingameGUI->addChatMessage("Set time to " + std::to_string(ticks));
+            }
+            catch (const std::exception &)
+            {
+                mc->ingameGUI->addChatMessage("Time must be an integer number of ticks");
+            }
+            return true;
+        }
+
+        if (command == "gamemode")
+        {
+            std::string mode;
+            std::string target;
+            std::string extra;
+            const bool hasMode = static_cast<bool>(input >> mode);
+            WorldInfo *worldInfo = mc->theWorld->getWorldInfo();
+            const int_t currentGameType = worldInfo != nullptr ? worldInfo->getGameType() :
+                (mc->playerController->isSpectatorMode() ? 3 :
+                    (mc->playerController->isInCreativeMode() ? 1 : 0));
+            int_t gameType = currentGameType;
+            if (hasMode)
+            {
+                const std::string normalizedMode = lowerChatToken(mode);
+                if (normalizedMode == "survival" || mode == "0")
+                    gameType = 0;
+                else if (normalizedMode == "creative" || mode == "1")
+                    gameType = 1;
+                else if (normalizedMode == "spectator" || mode == "3")
+                    gameType = 3;
+                else
+                {
+                    mc->ingameGUI->addChatMessage("Usage: /gamemode <survival|creative|spectator> [username]");
+                    return true;
+                }
+            }
+            else
+                gameType = currentGameType == 0 ? 1 : (currentGameType == 1 ? 3 : 0);
+
+            if (input >> target)
+            {
+                if ((input >> extra) || !String::equalsIgnoreCaseJava(target, mc->thePlayer->username))
+                {
+                    mc->ingameGUI->addChatMessage("That username is not in this single-player world");
+                    return true;
+                }
+            }
+
+            if (gameType != currentGameType)
+            {
+                PlayerController *oldController = mc->playerController;
+                mc->playerController = PlayerController::createForGameType(mc, gameType);
+                delete oldController;
+                if (gameType != 3)
+                    mc->thePlayer->noClip = false;
+                mc->playerController->onWorldChanged(mc->theWorld);
+                mc->playerController->initializePlayer(mc->thePlayer);
+            }
+            if (worldInfo != nullptr)
+                worldInfo->setGameType(gameType);
+            const char *modeName = gameType == 3 ? "spectator" : (gameType == 1 ? "creative" : "survival");
+            mc->ingameGUI->addChatMessage(std::string("Set game mode to ") + modeName);
+            return true;
+        }
+
+        mc->ingameGUI->addChatMessage("Unknown command: /" + command);
+        return true;
+    }
+}
 
 GuiChat::GuiChat()
     : historyBuffer()
@@ -92,8 +210,20 @@ void GuiChat::keyTyped(char_t c, int_t key)
     if (key == lwjgl::Keyboard::KEY_RETURN)
     {
         std::string message = String::trimJava(messageField != nullptr ? messageField->getText() : "");
-        if (!message.empty() && !mc->lineIsCommand(message))
-            mc->thePlayer->sendChatMessage(message);
+        if (!message.empty())
+        {
+            if (!mc->isMultiplayerWorld() && mc->lineIsCommand(message))
+            {
+                std::vector<std::string> &history = mc->ingameGUI->getSentMessages();
+                if (history.empty() || history.back() != message)
+                    history.push_back(message);
+                executeSingleplayerCommand(mc, message);
+            }
+            else
+            {
+                mc->thePlayer->sendChatMessage(message);
+            }
+        }
         mc->displayGuiScreen(nullptr);
         return;
     }

@@ -29,7 +29,7 @@ public:
 	void updateInFrustrum(ICamera *icamera);
 	void updateRenderer();
 	void markDirty();
-#ifdef WII_PLATFORM
+	#ifdef WII_PLATFORM
 	// Wii mesh-cache eviction. Returns true only if this renderer was holding
 	// recorded terrain geometry that has now been released.
 	bool releaseDisplayListsForCache();
@@ -47,22 +47,22 @@ public:
 	// memory returned. setDontDraw() wants that clearing behaviour and keeps
 	// calling releaseDisplayListsForCache() directly, so its guard is unchanged.
 	bool holdsRecordedTerrain() const;
-#endif
-#if PLATFORM_PC
+	#endif
+	#if PLATFORM_PC
 	void callOcclusionQueryList();
 	int_t getGLCallListForPass(int_t pass);
-#endif
-#if defined(WII_PLATFORM) || defined(PS2_PLATFORM)
+	#endif
+	#if defined(WII_PLATFORM) || defined(PS2_PLATFORM)
 	void renderExtraTerrainMeshes(int_t pass);
-#endif
-#if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY
+	#endif
+	#if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY
 	bool isTerrainBuildInProgress() const;
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	// Drops an in-flight build and returns its staging lease. The renderer
 	// stays dirty and restarts from scratch on a later scheduler step.
 	void abandonTerrainBuild();
-#endif
-#endif
+	#endif
+	#endif
 
 	// A dirty mark caused by a light value change. With
 	// PLATFORM_COALESCE_MESH_REBUILDS an active build keeps going and is
@@ -73,25 +73,35 @@ public:
 	// runs these ahead of streaming work and to completion.
 	bool urgentRebuild = false;
 
-#if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY
-#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
+	#if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY
+	#if PLATFORM_PS2 && MC_LOG_LEVEL >= 2
 	// Monotonic microseconds at the edit that set urgentRebuild; the urgent lane
 	// logs the edit-to-publish latency against it.
 	uint64_t urgentMarkUs = 0;
 	// Times an active (partial) build was discarded; the urgent-lane log reads
 	// the delta to tell a restarted build from a slow one.
 	unsigned int ps2BuildRestarts = 0;
-#endif
+	#endif
 	bool lastTerrainBuildStepDidWork() const;
-#if PLATFORM_PC_LEGACY || PLATFORM_PS2 || PLATFORM_WII
+	#if PLATFORM_PC_LEGACY || PLATFORM_PS2 || PLATFORM_WII
 	bool hasPublishedTerrain() const { return isInitialized; }
-#endif
-#if PLATFORM_PC_LEGACY
+	int_t getTotalMeshVertexCount() const
+	{
+		#if PLATFORM_PS2
+		return ps2VertexCount[0] + ps2VertexCount[1];
+		#elif PLATFORM_WII
+		return wiiBuildVertexCount[0] + wiiBuildVertexCount[1];
+		#else
+		return 0;
+		#endif
+	}
+	#endif
+	#if PLATFORM_PC_LEGACY
 	std::uint8_t pcLegacyVisibleFacesFrom(int_t face) const;
 	bool pcLegacyCpuVisible = true;
-#endif
-#endif
-#ifdef PS2_PLATFORM
+	#endif
+	#endif
+	#ifdef PS2_PLATFORM
 	bool terrainSourcesReady() const;
 	bool needsRebuildForPublishedChunk(int_t chunkX, int_t chunkZ) const;
 	// The renderer whose completed build currently owns the single publish
@@ -102,8 +112,8 @@ public:
 	static WorldRenderer *ps2PublishOwnerRenderer();
 	std::uint8_t ps2VisibleFacesFrom(int_t face) const;
 	bool ps2CpuVisible = true;
-#endif
-#ifdef WII_PLATFORM
+	#endif
+	#ifdef WII_PLATFORM
 	int_t getTerrainHandleForPass(int_t pass) const;
 
 	// Whether this section's mesh for that pass can contain texels the alpha
@@ -112,9 +122,9 @@ public:
 	// fragments against Z before texturing them. Conservative: an unbuilt or
 	// out-of-range pass answers true.
 	bool terrainPassNeedsAlphaTest(int_t pass) const;
-#endif
+	#endif
 
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	void renderPassImmediate(int_t pass);
 	void renderPassCached(int_t pass);
 	// Interpolated eye position for this terrain pass, in world coordinates. It
@@ -151,7 +161,7 @@ public:
 	// global mesh budget. The renderer stays at the same world position and is
 	// marked dirty so it can rebuild when it becomes relevant again.
 	size_t releasePs2PublishedMeshForBudget();
-#endif
+	#endif
 
 	bool skipAllRenderPasses();
 	bool skipRenderPass(int_t pass);
@@ -167,23 +177,23 @@ public:
 	bool needsUpdate;
 	bool queuedForUpdate = false;
 	bool isChunkLit;
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	bool isWaitingOnOcclusionQuery;
-#endif
+	#endif
 	bool isVisible;
 	bool isInFrustum;
-#if PLATFORM_PC || PLATFORM_PS2
+	#if PLATFORM_PC || PLATFORM_PS2
 	// Stronger than isInFrustum: PS2 uses it for its clip fast path and desktop
 	// Fancy Occlusion uses it to avoid querying boxes that cross a frustum plane.
 	bool isFullyInFrustum;
-#endif
-#if PLATFORM_PC
+	#endif
+	#if PLATFORM_PC
 	bool isVisibleFromPosition;
 	double visibleFromX;
 	double visibleFromY;
 	double visibleFromZ;
 	int_t glOcclusionQuery;
-#endif
+	#endif
 	int_t chunkIndex;
 
 	int_t posX;
@@ -212,23 +222,23 @@ public:
 
 	// Tile entities with special renderers collected during updateRenderer()
 	std::vector<TileEntity *> tileEntityRenderers;
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	std::vector<TileEntity *> pcLegacyStaticTileEntityRenderers;
-#endif
+	#endif
 
 private:
-#if PLATFORM_PC
+	#if PLATFORM_PC
 	int_t glRenderList;
 	bool needsOcclusionBoxUpdate;
 	void updateOcclusionBox();
-#endif
-#if defined(WII_PLATFORM) || defined(PS2_PLATFORM)
+	#endif
+	#if defined(WII_PLATFORM) || defined(PS2_PLATFORM)
 	// OptiFine CTM atlases are kept as backend-neutral captured meshes. The
 	// normal terrain mesh remains on /terrain.png; these groups are replayed
 	// after it with their own texture binding.
 	std::vector<TessellatorTextureMesh> extraTextureMeshes[2];
-#endif
-#ifdef WII_PLATFORM
+	#endif
+	#ifdef WII_PLATFORM
 	// Native GX geometry uses an opaque handle namespace independent from
 	// OpenGL display-list names. Two handles are live and two are staging so a
 	// rebuild can publish atomically without touching the currently visible mesh.
@@ -266,10 +276,10 @@ private:
 	void wiiResetBuildState();
 	void wiiBeginBuildState();
 	bool wiiBuildRendererStep(int_t blockBudget);
-#endif
+	#endif
 	bool isInitialized;
 	bool _skipRenderPass[2];
-#ifdef PS2_PLATFORM
+	#ifdef PS2_PLATFORM
 	std::vector<int_t> ps2RawBuffer[2];
 	int_t ps2VertexCount[2];
 	int_t ps2DrawMode[2];
@@ -337,12 +347,12 @@ private:
 	// as started in that case; it retries on a later frame.
 	bool ps2BeginBuildState();
 	bool ps2BuildRendererStep(int_t blockBudget);
-#endif
+	#endif
 
 	static void eraseAllTileEntityRefs(std::vector<TileEntity *> *list, TileEntity *te);
 	static void pushUniqueTileEntityRef(std::vector<TileEntity *> *list, TileEntity *te);
 	void removeTileEntityRenderersFromGlobalList();
-#if PLATFORM_PC_LEGACY
+	#if PLATFORM_PC_LEGACY
 	bool pcLegacyBuildActive;
 	unsigned int pcLegacyBuildSourceAvailability;
 	bool pcLegacyBuildSourceAvailabilityValid;
@@ -358,6 +368,6 @@ private:
 	bool pcLegacyBeginBuildState();
 	bool pcLegacyBuildRendererStep(int_t blockBudget);
 	void pcLegacyPublishBuild(PcLegacyTerrainStaging &staging);
-#endif
+	#endif
 	std::vector<TileEntity *> *tileEntities;
 };

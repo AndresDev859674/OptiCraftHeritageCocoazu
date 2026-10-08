@@ -4,6 +4,7 @@
 #include "ItemStack.h"
 #include "NBTTagCompound.h"
 #include "CompressedStreamTools.h"
+#include "client/Minecraft.h"
 
 #include <iostream>
 #include <chrono>
@@ -320,6 +321,11 @@ ItemStack *Packet::readItemStack(std::istream &is)
 
 void Packet::writeItemStack(ItemStack *itemStack, std::ostream &os)
 {
+	Minecraft *mc = Minecraft::getMinecraft();
+	if (itemStack != nullptr && Item::straw != nullptr &&
+		itemStack->itemID == Item::straw->shiftedIndex && mc != nullptr && mc->isMultiplayerWorld())
+		itemStack = nullptr;
+
 	if (itemStack == nullptr)
 	{
 		IOUtil::writeShort(os, -1);

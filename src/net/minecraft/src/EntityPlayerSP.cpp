@@ -213,7 +213,15 @@ void EntityPlayerSP::onLivingUpdate()
 		setSprinting(false);
 	}
 
-	if (movementInput != nullptr && capabilities.allowFlying && !wasJumping && movementInput->jump)
+	const bool spectatorMode = capabilities.isSpectator;
+	if (spectatorMode)
+	{
+		noClip = true;
+		capabilities.allowFlying = true;
+		capabilities.isFlying = true;
+	}
+
+	if (!spectatorMode && movementInput != nullptr && capabilities.allowFlying && !wasJumping && movementInput->jump)
 	{
 		if (flyToggleTimer == 0)
 			flyToggleTimer = 7;
@@ -227,14 +235,15 @@ void EntityPlayerSP::onLivingUpdate()
 
 	if (movementInput != nullptr && capabilities.isFlying)
 	{
+		const double verticalFlightSpeed = spectatorMode ? 0.30 : 0.15;
 		if (movementInput->sneak)
-			motionY -= 0.15;
+			motionY -= verticalFlightSpeed;
 		if (movementInput->jump)
-			motionY += 0.15;
+			motionY += verticalFlightSpeed;
 	}
 
 	EntityPlayer::onLivingUpdate();
-	if (onGround && capabilities.isFlying)
+	if (!spectatorMode && onGround && capabilities.isFlying)
 	{
 		capabilities.isFlying = false;
 		func_50009_aI();
@@ -353,8 +362,15 @@ int_t EntityPlayerSP::getPlayerArmorValue()
 	return inventory->getTotalArmorValue();
 }
 
-void EntityPlayerSP::sendChatMessage(const std::string &)
+void EntityPlayerSP::sendChatMessage(const std::string &message)
 {
+	if (mc == nullptr || mc->ingameGUI == nullptr)
+		return;
+
+	std::vector<std::string> &history = mc->ingameGUI->getSentMessages();
+	if (history.empty() || history.back() != message)
+		history.push_back(message);
+	mc->ingameGUI->addChatMessage("<" + username + "> " + message);
 }
 
 bool EntityPlayerSP::isSneaking()

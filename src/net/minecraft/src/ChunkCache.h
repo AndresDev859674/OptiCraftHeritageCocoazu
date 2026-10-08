@@ -99,6 +99,13 @@ private:
 	int_t chunkZ;
 	int_t chunkArrayWidth;
 	int_t chunkArrayDepth;
+#if PLATFORM_PC
+	int_t dynamicLightX = 0;
+	int_t dynamicLightY = 0;
+	int_t dynamicLightZ = 0;
+	bool dynamicLightActive = false;
+	int_t getDynamicLightValue(int_t x, int_t y, int_t z) const;
+#endif
 	size_t chunkCellCount;
 	Chunk *chunkInline[kInlineDim * kInlineDim];
 	std::vector<Chunk *> chunkHeap;

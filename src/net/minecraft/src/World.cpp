@@ -110,28 +110,62 @@
 #include "platform/world/StreamingFrameBudget.h"
 #endif
 
-#if PLATFORM_BOUNDED_WORLD
+static bool isSafeSpawnBlock(int_t blockId)
+{
+    if (blockId <= 0 || blockId >= Block::BLOCK_REGISTRY_SIZE)
+        return false;
+    Block *block = Block::blocksList[blockId];
+    if (block == nullptr || block->blockMaterial == nullptr)
+        return false;
+    if (!block->blockMaterial->getIsSolid())
+        return false;
+    if (block->blockMaterial->getIsLiquid())
+        return false;
+    if (blockId == Block::ice->blockID || blockId == Block::cactus->blockID)
+        return false;
+    return true;
+}
+
+static bool isPassableAir(int_t blockId)
+{
+    if (blockId <= 0 || blockId >= Block::BLOCK_REGISTRY_SIZE)
+        return true;
+    Block *block = Block::blocksList[blockId];
+    if (block == nullptr || block->blockMaterial == nullptr)
+        return true;
+    if (block->blockMaterial->getIsSolid() || block->blockMaterial->getIsLiquid())
+        return false;
+    return true;
+}
+
 static int_t platformFindTopSpawnBlockY(World *world, int_t x, int_t z)
 {
-    // Find the highest solid block at the chosen spawn column. Vanilla Beta
-    // keeps SpawnY around 64 and lets the player fall/resolve collision, but a
-    // bounded chunk cache can delay player ticking. A resolved surface Y
-    // prevents the player from appearing far above the terrain while the world
-    // finishes loading.
-    for (int_t y = WorldHeight::MAX_Y; y >= 0; --y)
+    for (int_t y = WorldHeight::MAX_Y - 2; y >= 63; --y)
     {
         int_t id = world->getBlockId(x, y, z);
-        if (id <= 0)
+        if (!isSafeSpawnBlock(id))
             continue;
 
-        Block *block = Block::blocksList[id];
-        if (block != nullptr && block->blockMaterial != nullptr && block->blockMaterial->getIsSolid())
+        int_t feetId = world->getBlockId(x, y + 1, z);
+        int_t headId = world->getBlockId(x, y + 2, z);
+        if (isPassableAir(feetId) && isPassableAir(headId))
+            return y;
+    }
+
+    for (int_t y = 62; y >= 1; --y)
+    {
+        int_t id = world->getBlockId(x, y, z);
+        if (!isSafeSpawnBlock(id))
+            continue;
+
+        int_t feetId = world->getBlockId(x, y + 1, z);
+        int_t headId = world->getBlockId(x, y + 2, z);
+        if (isPassableAir(feetId) && isPassableAir(headId))
             return y;
     }
 
     return 64;
 }
-#endif
 
 // Static initialization
 int World::lightingUpdatesScheduled = 0;
@@ -140,7 +174,7 @@ static constexpr int_t UPDATE_LCG_INCREMENT = 1013904223;
 static std::uint64_t packChunkCoordKey(int_t x, int_t z)
 {
     return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32)
-         | static_cast<std::uint32_t>(z);
+    | static_cast<std::uint32_t>(z);
 }
 
 static int_t unpackChunkCoordX(std::uint64_t key)
@@ -161,8 +195,8 @@ static bool isActiveClientEntity(Entity *entity)
 {
     Minecraft *mc = Minecraft::getMinecraft();
     return mc != nullptr &&
-           (static_cast<void *>(mc->thePlayer) == static_cast<void *>(entity) ||
-            static_cast<void *>(mc->renderViewEntity) == static_cast<void *>(entity));
+    (static_cast<void *>(mc->thePlayer) == static_cast<void *>(entity) ||
+    static_cast<void *>(mc->renderViewEntity) == static_cast<void *>(entity));
 }
 
 static void deleteWorldOwnedEntity(Entity *entity)
@@ -253,10 +287,10 @@ World::~World()
     // lightingToUpdate now holds MetadataChunkBlock by value; nothing to free.
     for (NextTickListEntry *entry : scheduledTickTreeSet)
         delete entry;
-#if PLATFORM_PC_LEGACY
+    #if PLATFORM_PC_LEGACY
     delete pcLegacyTickScheduler;
     pcLegacyTickScheduler = nullptr;
-#endif
+    #endif
 
     delete villageSiegeObj;
     villageSiegeObj = nullptr;
@@ -301,14 +335,14 @@ World::World(ISaveHandler* saveHandler, const jstring& name, WorldProvider* worl
     soundCounter = rand.nextInt(12000);
     entitiesWithinAABBExcludingEntity.clear();
     multiplayerWorld = false;
-    
+
     this->saveHandler = saveHandler;
     this->worldInfo = new WorldInfo(seed, name);
     this->worldProvider = worldProvider;
     this->mapStorage = new MapStorage(saveHandler);
     this->villageCollectionObj = new VillageCollection(this);
     this->villageSiegeObj = new VillageSiege(this);
-    
+
     worldProvider->registerWorld(this);
     chunkProvider = getChunkProvider();
     calculateInitialSkylight();
@@ -347,7 +381,7 @@ World::World(World* world, WorldProvider* worldProvider)
     soundCounter = rand.nextInt(12000);
     entitiesWithinAABBExcludingEntity.clear();
     multiplayerWorld = false;
-    
+
     this->lockTimestamp = world->lockTimestamp;
     this->saveHandler = world->saveHandler;
     this->ownsSaveHandler = world->ownsSaveHandler;
@@ -357,7 +391,7 @@ World::World(World* world, WorldProvider* worldProvider)
     this->worldProvider = worldProvider;
     this->villageCollectionObj = new VillageCollection(this);
     this->villageSiegeObj = new VillageSiege(this);
-    
+
     worldProvider->registerWorld(this);
     chunkProvider = getChunkProvider();
     calculateInitialSkylight();
@@ -373,7 +407,7 @@ void World::setMapStorage(MapStorage *storage)
 }
 
 World::World(ISaveHandler* saveHandler, const jstring& name, WorldSettings* settings)
-    : World(saveHandler, name, settings, nullptr)
+: World(saveHandler, name, settings, nullptr)
 {
 }
 
@@ -463,7 +497,7 @@ World::World(ISaveHandler* saveHandler, const jstring& name, WorldSettings* sett
 }
 
 World::World(ISaveHandler* saveHandler, const jstring& name, long_t seed)
-    : World(saveHandler, name, seed, nullptr)
+: World(saveHandler, name, seed, nullptr)
 {
 }
 
@@ -500,7 +534,7 @@ World::World(ISaveHandler* saveHandler, const jstring& name, long_t seed, WorldP
     soundCounter = rand.nextInt(12000);
     entitiesWithinAABBExcludingEntity.clear();
     multiplayerWorld = false;
-    
+
     this->saveHandler = saveHandler;
     WorldLoadTrace::step("mapStorage");
     this->mapStorage = new MapStorage(saveHandler);
@@ -521,7 +555,7 @@ World::World(ISaveHandler* saveHandler, const jstring& name, long_t seed, WorldP
     {
         this->worldProvider = WorldProvider::getProviderForDimension(0);
     }
-    
+
     WorldLoadTrace::step("worldInfo");
     bool flag = false;
     if (this->worldInfo == nullptr)
@@ -533,7 +567,7 @@ World::World(ISaveHandler* saveHandler, const jstring& name, long_t seed, WorldP
     {
         this->worldInfo->setWorldName(name);
     }
-    
+
     WorldLoadTrace::step("villages");
     this->villageCollectionObj = new VillageCollection(this);
     this->villageSiegeObj = new VillageSiege(this);
@@ -541,13 +575,13 @@ World::World(ISaveHandler* saveHandler, const jstring& name, long_t seed, WorldP
     this->worldProvider->registerWorld(this);
     WorldLoadTrace::step("chunkProvider");
     this->chunkProvider = getChunkProvider();
-    
+
     WorldLoadTrace::step("initialSpawn");
     if (flag)
     {
         getInitialSpawnLocation();
     }
-    
+
     WorldLoadTrace::step("initialSkylight");
     calculateInitialSkylight();
     WorldLoadTrace::step("weather");
@@ -608,24 +642,52 @@ void World::generateSpawnPoint()
     findingSpawnPoint = true;
     WORLD_LOAD_STAGE("generateSpawnPoint");
 
-#if PLATFORM_BOUNDED_WORLD
-    // Bounded console generators cannot afford vanilla's up-to-1000 synchronous
-    // chunk probes.  Keep the 1.2.5 biome-guided initial position, but cap the
-    // coordinate probes and resolve a safe local surface Y.
-#endif
     WorldChunkManager *manager = worldProvider->worldChunkMgr;
     std::vector<BiomeGenBase *> &spawnBiomes = manager->getBiomesToSpawnIn();
     Random spawnRandom(getSeed());
     WorldLoadTrace::step("findBiomePosition");
-#if defined(PS2_PLATFORM)
-    ChunkPosition *position = manager->findBiomePosition(0, 0, 64, spawnBiomes, spawnRandom);
-#else
-    ChunkPosition *position = manager->findBiomePosition(0, 0, 256, spawnBiomes, spawnRandom);
-#endif
 
-    int_t spawnX = 0;
+    int_t worldSizeType = 0;
+    if (worldInfo != nullptr && worldInfo->getTerrainType() == WorldType::FLAT)
+    {
+        worldSizeType = 1;
+    }
+    int_t searchRadius = 64;
+    int_t maxOffset = 48;
+    int_t minChunk = -8;
+    int_t maxChunk = 7;
+
+    if (worldSizeType == 1) // 256x256
+    {
+        searchRadius = 48;
+        maxOffset = 40;
+        minChunk = -5;
+        maxChunk = 4;
+    }
+    else if (worldSizeType == 2) // 864x864
+    {
+        searchRadius = 128;
+        maxOffset = 180;
+        minChunk = -20;
+        maxChunk = 19;
+    }
+    else // Infinite
+    {
+        searchRadius = 256;
+        maxOffset = 192;
+        minChunk = -200;
+        maxChunk = 200;
+    }
+
+    // Seed-based randomized search origin to vary spawn points across worlds
+    int_t centerSearchX = spawnRandom.nextInt(maxOffset * 2 + 1) - maxOffset;
+    int_t centerSearchZ = spawnRandom.nextInt(maxOffset * 2 + 1) - maxOffset;
+
+    ChunkPosition *position = manager->findBiomePosition(centerSearchX, centerSearchZ, searchRadius, spawnBiomes, spawnRandom);
+
+    int_t spawnX = centerSearchX;
     int_t spawnY = worldProvider->getAverageGroundLevel();
-    int_t spawnZ = 0;
+    int_t spawnZ = centerSearchZ;
     if (position != nullptr)
     {
         spawnX = position->x;
@@ -633,89 +695,106 @@ void World::generateSpawnPoint()
         delete position;
     }
 
-#if defined(PS2_PLATFORM)
-    // Hardware PS2 cannot afford vanilla's synchronous spawn probing here.
-    // Every canCoordinateBeSpawn() can force another complete chunk generation
-    // before the loading screen is visible. Generate only the biome-guided
-    // candidate chunk and find the best spawn column inside that same 16x16.
-    WorldLoadTrace::step("spawnCandidateChunk");
-    const int_t spawnChunkX = JavaArithmetic::intShr(spawnX, 4);
-    const int_t spawnChunkZ = JavaArithmetic::intShr(spawnZ, 4);
-    const int_t chunkWorldX = JavaArithmetic::intShl(spawnChunkX, 4);
-    const int_t chunkWorldZ = JavaArithmetic::intShl(spawnChunkZ, 4);
-    const int_t startLocalX = spawnX & 15;
-    const int_t startLocalZ = spawnZ & 15;
+    // Clamp candidate to safe inner region for limited worlds
+    int_t candidateChunkX = JavaArithmetic::intShr(spawnX, 4);
+    int_t candidateChunkZ = JavaArithmetic::intShr(spawnZ, 4);
+    if (candidateChunkX < minChunk) candidateChunkX = minChunk;
+    else if (candidateChunkX > maxChunk) candidateChunkX = maxChunk;
+    if (candidateChunkZ < minChunk) candidateChunkZ = minChunk;
+    else if (candidateChunkZ > maxChunk) candidateChunkZ = maxChunk;
 
-    platformHardwareCheckpoint("before spawn candidate chunk");
-    Chunk *spawnChunk = getChunkFromChunkCoords(spawnChunkX, spawnChunkZ);
-    platformHardwareCheckpoint("after spawn candidate chunk");
-    if (spawnChunk != nullptr)
+    WorldLoadTrace::step("scanSafeSpawnChunk");
+
+    // Spiral search across candidate chunks (up to 9 chunks: center + 8 neighbors)
+    // to find safe, dry, non-suffocating ground with chunk-centered coordinates
+    static const int_t spiralOffsets[9][2] = {
+        {0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1},
+        {1, 1}, {-1, 1}, {-1, -1}, {1, -1}
+    };
+
+    bool foundSafeSpawn = false;
+    int_t bestGrassX = 0, bestGrassY = -1, bestGrassZ = 0;
+    int_t bestSolidX = 0, bestSolidY = -1, bestSolidZ = 0;
+
+    for (int_t chunkStep = 0; chunkStep < 9 && !foundSafeSpawn; ++chunkStep)
     {
-        bool foundGrass = false;
-        int_t fallbackLocalX = startLocalX;
-        int_t fallbackLocalZ = startLocalZ;
-        int_t fallbackY = -1;
+        const int_t curChunkX = candidateChunkX + spiralOffsets[chunkStep][0];
+        const int_t curChunkZ = candidateChunkZ + spiralOffsets[chunkStep][1];
 
-        WorldLoadTrace::step("scanSpawnChunk");
-        for (int_t dz = 0; dz < 16 && !foundGrass; ++dz)
+        if (curChunkX < minChunk || curChunkX > maxChunk ||
+            curChunkZ < minChunk || curChunkZ > maxChunk)
+            continue;
+
+        Chunk *chunk = getChunkFromChunkCoords(curChunkX, curChunkZ);
+        if (chunk == nullptr)
+            continue;
+
+        const int_t chunkWorldX = JavaArithmetic::intShl(curChunkX, 4);
+        const int_t chunkWorldZ = JavaArithmetic::intShl(curChunkZ, 4);
+
+        // Scan interior columns centered in the chunk (local 4 to 12)
+        // Starting at (8, 8) to avoid chunk seams and dirty cascades
+        static const int_t interiorCoords[9] = {8, 7, 9, 6, 10, 5, 11, 4, 12};
+
+        for (int_t zi = 0; zi < 9 && !foundSafeSpawn; ++zi)
         {
-            const int_t localZ = (startLocalZ + dz) & 15;
-            for (int_t dx = 0; dx < 16; ++dx)
+            const int_t localZ = interiorCoords[zi];
+            for (int_t xi = 0; xi < 9; ++xi)
             {
-                const int_t localX = (startLocalX + dx) & 15;
-                const int_t surfaceY = spawnChunk->getHeightValue(localX, localZ) - 1;
-                if (surfaceY < 0 || surfaceY >= WorldHeight::HEIGHT)
+                const int_t localX = interiorCoords[xi];
+                const int_t surfaceY = chunk->getHeightValue(localX, localZ) - 1;
+                if (surfaceY < 60 || surfaceY >= WorldHeight::HEIGHT - 2)
                     continue;
 
-                const int_t blockId = spawnChunk->getBlockID(localX, surfaceY, localZ);
-                if (blockId <= 0 || blockId >= Block::BLOCK_REGISTRY_SIZE)
+                const int_t blockId = chunk->getBlockID(localX, surfaceY, localZ);
+                if (!isSafeSpawnBlock(blockId))
                     continue;
 
-                Block *block = Block::blocksList[blockId];
-                if (fallbackY < 0 && block != nullptr && block->blockMaterial != nullptr &&
-                    block->blockMaterial->getIsSolid())
-                {
-                    fallbackLocalX = localX;
-                    fallbackLocalZ = localZ;
-                    fallbackY = surfaceY;
-                }
+                const int_t feetId = chunk->getBlockID(localX, surfaceY + 1, localZ);
+                const int_t headId = chunk->getBlockID(localX, surfaceY + 2, localZ);
+                if (!isPassableAir(feetId) || !isPassableAir(headId))
+                    continue;
 
-                if (blockId == Block::grass->blockID)
+                const int_t worldX = chunkWorldX + localX;
+                const int_t worldZ = chunkWorldZ + localZ;
+
+                if (blockId == Block::grass->blockID && surfaceY >= 63)
                 {
-                    spawnX = JavaArithmetic::intAdd(chunkWorldX, localX);
-                    spawnZ = JavaArithmetic::intAdd(chunkWorldZ, localZ);
-                    spawnY = surfaceY;
-                    foundGrass = true;
+                    bestGrassX = worldX;
+                    bestGrassY = surfaceY;
+                    bestGrassZ = worldZ;
+                    foundSafeSpawn = true;
                     break;
+                }
+                else if (bestSolidY < 0 && surfaceY >= 63)
+                {
+                    bestSolidX = worldX;
+                    bestSolidY = surfaceY;
+                    bestSolidZ = worldZ;
                 }
             }
         }
+    }
 
-        if (!foundGrass && fallbackY >= 0)
-        {
-            spawnX = JavaArithmetic::intAdd(chunkWorldX, fallbackLocalX);
-            spawnZ = JavaArithmetic::intAdd(chunkWorldZ, fallbackLocalZ);
-            spawnY = fallbackY;
-        }
-    }
-#elif PLATFORM_BOUNDED_WORLD
-    WorldLoadTrace::step("canCoordinateBeSpawn");
-    for (int_t attempts = 0; attempts < 8 && !worldProvider->canCoordinateBeSpawn(spawnX, spawnZ); ++attempts)
+    if (foundSafeSpawn)
     {
-		MC_LOG_DEBUG("world", "spawn probe %d at %d,%d\n", (int)attempts, (int)spawnX, (int)spawnZ);
-		spawnX = JavaArithmetic::intAdd(spawnX, spawnRandom.nextIntDifference(64));
-		spawnZ = JavaArithmetic::intAdd(spawnZ, spawnRandom.nextIntDifference(64));
+        spawnX = bestGrassX;
+        spawnY = bestGrassY;
+        spawnZ = bestGrassZ;
     }
-    WorldLoadTrace::step("findTopSpawnBlockY");
-    spawnY = platformFindTopSpawnBlockY(this, spawnX, spawnZ);
-#else
-    WorldLoadTrace::step("canCoordinateBeSpawn");
-    for (int_t attempts = 0; attempts < 1000 && !worldProvider->canCoordinateBeSpawn(spawnX, spawnZ); ++attempts)
+    else if (bestSolidY >= 0)
     {
-		spawnX = JavaArithmetic::intAdd(spawnX, spawnRandom.nextIntDifference(64));
-		spawnZ = JavaArithmetic::intAdd(spawnZ, spawnRandom.nextIntDifference(64));
+        spawnX = bestSolidX;
+        spawnY = bestSolidY;
+        spawnZ = bestSolidZ;
     }
-#endif
+    else
+    {
+        // Ultimate fallback: center of candidate chunk at ground level
+        spawnX = JavaArithmetic::intShl(candidateChunkX, 4) + 8;
+        spawnZ = JavaArithmetic::intShl(candidateChunkZ, 4) + 8;
+        spawnY = platformFindTopSpawnBlockY(this, spawnX, spawnZ);
+    }
 
     worldInfo->setSpawn(spawnX, spawnY, spawnZ);
     findingSpawnPoint = false;
@@ -737,7 +816,7 @@ void World::setSpawnLocation()
     {
         worldInfo->setSpawnY(64);
     }
-    
+
     int x = worldInfo->getSpawnX();
     int z = worldInfo->getSpawnZ();
     int_t attempts = 0;
@@ -750,10 +829,10 @@ void World::setSpawnLocation()
             break;
     }
 
-#if PLATFORM_BOUNDED_WORLD
+    #if PLATFORM_BOUNDED_WORLD
     worldInfo->setSpawnY(platformFindTopSpawnBlockY(this, x, z));
-#endif
-    
+    #endif
+
     worldInfo->setSpawnX(x);
     worldInfo->setSpawnZ(z);
 }
@@ -787,7 +866,7 @@ void World::spawnPlayerWithLoadedChunks(EntityPlayer* entityPlayer)
             entityPlayer->readFromNBT(nbt);
             worldInfo->setPlayerNBTTagCompound(nullptr);
         }
-        
+
         int chunkX = JavaArithmetic::intShr(MathHelper::floor_double(entityPlayer->posX), 4);
         int chunkZ = JavaArithmetic::intShr(MathHelper::floor_double(entityPlayer->posZ), 4);
         if (ChunkProviderLoadOrGenerate* chunkProviderLoadOrGenerate = dynamic_cast<ChunkProviderLoadOrGenerate*>(chunkProvider))
@@ -798,7 +877,7 @@ void World::spawnPlayerWithLoadedChunks(EntityPlayer* entityPlayer)
         {
             chunkProviderMap->setCurrentChunkOver(chunkX, chunkZ);
         }
-        
+
         entityJoinedWorld(entityPlayer);
     }
     catch (...)
@@ -813,21 +892,21 @@ void World::saveWorld(bool flag, IProgressUpdate* progressUpdate)
     {
         return;
     }
-    
+
     if (progressUpdate != nullptr)
     {
         progressUpdate->displaySavingString("Saving level");
     }
-    
+
     MC_LOG_DEBUG("save", "[world save] saveLevel begin\n");
     saveLevel();
     MC_LOG_DEBUG("save", "[world save] saveLevel end\n");
-    
+
     if (progressUpdate != nullptr)
     {
         progressUpdate->displayLoadingString("Saving chunks");
     }
-    
+
     MC_LOG_DEBUG("save", "[world save] saveChunks begin full=%d\n", flag ? 1 : 0);
     const bool chunksDone = chunkProvider->saveChunks(flag, progressUpdate);
     MC_LOG_DEBUG("save", "[world save] saveChunks end full=%d done=%d\n",
@@ -837,18 +916,18 @@ void World::saveWorld(bool flag, IProgressUpdate* progressUpdate)
 void World::saveLevel()
 {
     checkSessionLock();
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+    #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
     const long_t saveInfoStartNs = System::nanoTime();
-#endif
+    #endif
     saveHandler->saveWorldInfoAndPlayer(worldInfo, playerEntities);
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+    #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
     platformProfileSaveWorldInfo(System::nanoTime() - saveInfoStartNs);
     const long_t mapStorageStartNs = System::nanoTime();
-#endif
+    #endif
     mapStorage->saveAllData();
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+    #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
     platformProfileMapStorage(System::nanoTime() - mapStorageStartNs);
-#endif
+    #endif
 }
 
 bool World::saveAllChunks(int i)
@@ -857,12 +936,12 @@ bool World::saveAllChunks(int i)
     {
         return true;
     }
-    
+
     if (i == 0)
     {
         saveLevel();
     }
-    
+
     return chunkProvider->saveChunks(false, nullptr);
 }
 
@@ -885,12 +964,12 @@ int World::getBlockId(int x, int y, int z)
     {
         return 0;
     }
-    
+
     if (y < 0)
     {
         return 0;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return 0;
@@ -899,14 +978,14 @@ int World::getBlockId(int x, int y, int z)
     if (chunkLocalDecoration.isActive())
         return chunkLocalDecoration.getBlockId(x, y, z);
 
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     int_t populationBlockId = 0;
     if (populationRegionAccessor.tryGetBlockId(x, y, z, populationBlockId))
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockRead, true);
         return populationBlockId;
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockRead, false);
 
@@ -958,14 +1037,14 @@ bool World::blockExists(int x, int y, int z)
     {
         return false;
     }
-    
+
     return chunkExists(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4));
 }
 
 bool World::doChunksNearChunkExist(int x, int y, int z, int range)
 {
     return checkChunksExist(JavaArithmetic::intSub(x, range), JavaArithmetic::intSub(y, range), JavaArithmetic::intSub(z, range),
-        JavaArithmetic::intAdd(x, range), JavaArithmetic::intAdd(y, range), JavaArithmetic::intAdd(z, range));
+                            JavaArithmetic::intAdd(x, range), JavaArithmetic::intAdd(y, range), JavaArithmetic::intAdd(z, range));
 }
 
 bool World::checkChunksExist(int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
@@ -974,12 +1053,12 @@ bool World::checkChunksExist(int minX, int minY, int minZ, int maxX, int maxY, i
     {
         return false;
     }
-    
+
     minX = JavaArithmetic::intShr(minX, 4);
     minZ = JavaArithmetic::intShr(minZ, 4);
     maxX = JavaArithmetic::intShr(maxX, 4);
     maxZ = JavaArithmetic::intShr(maxZ, 4);
-    
+
     for (int cx = minX; cx <= maxX; cx++)
     {
         for (int cz = minZ; cz <= maxZ; cz++)
@@ -990,7 +1069,7 @@ bool World::checkChunksExist(int minX, int minY, int minZ, int maxX, int maxY, i
             }
         }
     }
-    
+
     return true;
 }
 
@@ -1006,32 +1085,32 @@ Chunk *World::getChunkIfExists(int_t chunkX, int_t chunkZ)
 
 bool World::isChunkPopulationPendingForRendering(int_t chunkX, int_t chunkZ) const
 {
-#if PLATFORM_DEFER_MESH_DURING_POPULATE
+    #if PLATFORM_DEFER_MESH_DURING_POPULATE
     if (chunkProvider == nullptr)
         return false;
 
     // Population rooted at any of these four chunks can write into (chunkX, chunkZ).
     return chunkProvider->isChunkPopulationPending(chunkX, chunkZ) ||
-           chunkProvider->isChunkPopulationPending(chunkX - 1, chunkZ) ||
-           chunkProvider->isChunkPopulationPending(chunkX, chunkZ - 1) ||
-           chunkProvider->isChunkPopulationPending(chunkX - 1, chunkZ - 1);
-#else
+    chunkProvider->isChunkPopulationPending(chunkX - 1, chunkZ) ||
+    chunkProvider->isChunkPopulationPending(chunkX, chunkZ - 1) ||
+    chunkProvider->isChunkPopulationPending(chunkX - 1, chunkZ - 1);
+    #else
     (void)chunkX;
     (void)chunkZ;
     return false;
-#endif
+    #endif
 }
 
 bool World::isChunkInLoadRadius(int chunkX, int chunkZ)
 {
-#if PLATFORM_BOUNDED_WORLD
+    #if PLATFORM_BOUNDED_WORLD
     // Only the bounded ServerChunkCache knows its load radius; for other providers
     // (PC, client, nether/sky) a missing chunk is never a deferred-generation case.
     if (ChunkProvider* cp = dynamic_cast<ChunkProvider*>(chunkProvider))
         return cp->canChunkExist(chunkX, chunkZ);
-#else
+    #else
     (void)chunkX; (void)chunkZ;
-#endif
+    #endif
     return false;
 }
 
@@ -1039,13 +1118,13 @@ bool World::isChunkResident(int_t chunkX, int_t chunkZ) const
 {
     const int_t radius = worldProvider != nullptr ? worldProvider->getResidentChunkRadius() : -1;
     return radius >= 0 &&
-           chunkX >= -radius && chunkX <= radius &&
-           chunkZ >= -radius && chunkZ <= radius;
+    chunkX >= -radius && chunkX <= radius &&
+    chunkZ >= -radius && chunkZ <= radius;
 }
 
 bool World::isChunkRetainedByEntity(int_t chunkX, int_t chunkZ) const
 {
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     for (Entity *entity : loadedEntityList)
     {
         if (entity == nullptr || entity->isDead)
@@ -1062,16 +1141,16 @@ bool World::isChunkRetainedByEntity(int_t chunkX, int_t chunkZ) const
         if (dx >= -radius && dx <= radius && dz >= -radius && dz <= radius)
             return true;
     }
-#else
+    #else
     (void)chunkX;
     (void)chunkZ;
-#endif
+    #endif
     return false;
 }
 
 bool World::isChunkRequiredByRetainedEntity(int_t chunkX, int_t chunkZ) const
 {
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     for (Entity *entity : loadedEntityList)
     {
         if (entity == nullptr || entity->isDead || entity->getChunkRetentionRadius() < 0)
@@ -1082,10 +1161,10 @@ bool World::isChunkRequiredByRetainedEntity(int_t chunkX, int_t chunkZ) const
         if (chunkX == entityChunkX && chunkZ == entityChunkZ)
             return true;
     }
-#else
+    #else
     (void)chunkX;
     (void)chunkZ;
-#endif
+    #endif
     return false;
 }
 
@@ -1105,12 +1184,12 @@ bool World::setBlockAndMetadata(int x, int y, int z, int blockId, int metadata)
     {
         return false;
     }
-    
+
     if (y < 0)
     {
         return false;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return false;
@@ -1119,14 +1198,14 @@ bool World::setBlockAndMetadata(int x, int y, int z, int blockId, int metadata)
     if (chunkLocalDecoration.isActive())
         return chunkLocalDecoration.setBlock(x, y, z, blockId, metadata);
 
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockWrite, true);
         return populationChunk->setBlockIDWithMetadata(x & 0xf, y, z & 0xf, blockId, metadata);
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockWrite, false);
 
@@ -1140,12 +1219,12 @@ bool World::setBlock(int x, int y, int z, int blockId)
     {
         return false;
     }
-    
+
     if (y < 0)
     {
         return false;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return false;
@@ -1154,14 +1233,14 @@ bool World::setBlock(int x, int y, int z, int blockId)
     if (chunkLocalDecoration.isActive())
         return chunkLocalDecoration.setBlock(x, y, z, blockId, 0);
 
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockWrite, true);
         return populationChunk->setBlockID(x & 0xf, y, z & 0xf, blockId);
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockWrite, false);
 
@@ -1214,38 +1293,38 @@ void World::endChunkLocalDecoration()
 
 void World::endPopulationFastPath()
 {
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+    #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
     const bool profileClose = populationFastPathActive;
     const std::uint32_t lightingStart = profileClose ? platformProfileRenderPhaseBegin() : 0;
-#endif
+    #endif
     populationFastPathActive = false;
     populationRegionAccessor.reset();
     flushPopulationLightingBatches();
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+    #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
     if (profileClose)
         platformProfilePopulationFastPathStage(lightingStart, PlatformPopulationFastPathStage::LightingFlush, 1);
     const std::uint32_t skylightStart = profileClose ? platformProfileRenderPhaseBegin() : 0;
     int skylightRegens = 0;
-#endif
+    #endif
     for (int_t index = 0; index < 4; ++index)
     {
         Chunk *chunk = populationFastChunks[index];
         if (chunk != nullptr && chunk->skylightRegenPending)
         {
             const int_t dirtyColumns = chunk->flushPopulationSkylightColumns();
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+            #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
             if (dirtyColumns > 0)
                 ++skylightRegens;
-#else
+            #else
             (void)dirtyColumns;
-#endif
+            #endif
         }
         populationFastChunks[index] = nullptr;
     }
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+    #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
     if (profileClose)
         platformProfilePopulationFastPathStage(skylightStart, PlatformPopulationFastPathStage::SkylightRegen, skylightRegens);
-#endif
+    #endif
 }
 
 bool World::isPopulationFastPathChunk(const Chunk *chunk) const
@@ -1272,14 +1351,14 @@ Chunk *World::getChunkForPopulation(int_t x, int_t y, int_t z)
     // through to setBlockAndMetadataForPopulation, which writes the buffer.
     if (chunkLocalDecoration.isActive())
         return nullptr;
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
         return populationChunk;
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, false);
 
@@ -1294,17 +1373,17 @@ bool World::setBlockAndMetadataForPopulation(int_t x, int_t y, int_t z, int_t bl
     if (chunkLocalDecoration.isActive())
         return chunkLocalDecoration.setBlock(x, y, z, blockId, metadata);
     platformProfilePopulationBlockWrite();
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr &&
         (blockId == Block::leaves->blockID || blockId == Block::wood->blockID ||
-         blockId == Block::vine->blockID || blockId == Block::tallGrass->blockID))
+        blockId == Block::vine->blockID || blockId == Block::tallGrass->blockID))
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::BlockWrite, true);
         return populationChunk->setVegetationBlockIDWithMetadataForPopulation(
             x & 0xf, y, z & 0xf, blockId, metadata);
     }
-#endif
+    #endif
     return setBlockAndMetadata(x, y, z, blockId, metadata);
 }
 
@@ -1312,7 +1391,7 @@ bool World::setBlockAndMetadataForPopulation(int_t x, int_t y, int_t z, int_t bl
 bool World::batchPopulationLightingUpdate(EnumSkyBlock *type, int_t minX, int_t minY, int_t minZ,
                                           int_t maxX, int_t maxY, int_t maxZ)
 {
-#if PLATFORM_BATCH_POPULATION_LIGHTING
+    #if PLATFORM_BATCH_POPULATION_LIGHTING
     if (!populationFastPathActive || type == nullptr || minX > maxX || minY > maxY || minZ > maxZ)
         return false;
 
@@ -1355,8 +1434,8 @@ bool World::batchPopulationLightingUpdate(EnumSkyBlock *type, int_t minX, int_t 
                 const int_t clippedMinY = std::max<int_t>(minY, sectionMinY);
                 const int_t clippedMaxY = std::min<int_t>(maxY, sectionMinY + 15);
                 const int_t batchIndex =
-                    (typeIndex * POPULATION_LIGHTING_CHUNK_COUNT + chunkIndex) *
-                    WorldHeight::SECTION_COUNT + section;
+                (typeIndex * POPULATION_LIGHTING_CHUNK_COUNT + chunkIndex) *
+                WorldHeight::SECTION_COUNT + section;
                 PopulationLightingBatch &batch = populationLightingBatches[batchIndex];
                 if (!batch.valid)
                 {
@@ -1381,7 +1460,7 @@ bool World::batchPopulationLightingUpdate(EnumSkyBlock *type, int_t minX, int_t 
         }
     }
     return true;
-#else
+    #else
     (void)type;
     (void)minX;
     (void)minY;
@@ -1390,14 +1469,14 @@ bool World::batchPopulationLightingUpdate(EnumSkyBlock *type, int_t minX, int_t 
     (void)maxY;
     (void)maxZ;
     return false;
-#endif
+    #endif
 }
 
 void World::flushPopulationLightingBatches()
 {
-#if PLATFORM_BATCH_POPULATION_LIGHTING
+    #if PLATFORM_BATCH_POPULATION_LIGHTING
     constexpr int_t batchesPerType =
-        POPULATION_LIGHTING_CHUNK_COUNT * WorldHeight::SECTION_COUNT;
+    POPULATION_LIGHTING_CHUNK_COUNT * WorldHeight::SECTION_COUNT;
     for (int_t typeIndex = 0; typeIndex < POPULATION_LIGHTING_TYPE_COUNT; ++typeIndex)
     {
         EnumSkyBlock *type = typeIndex == 0 ? EnumSkyBlock::Sky : EnumSkyBlock::Block;
@@ -1422,14 +1501,14 @@ void World::flushPopulationLightingBatches()
             scheduleLightingUpdate_do(type, minX, minY, minZ, maxX, maxY, maxZ, true);
         }
     }
-#else
+    #else
     for (PopulationLightingBatch &batch : populationLightingBatches)
         batch.valid = false;
-#endif
+    #endif
 }
 
 bool World::replaceBlockForPopulation(int_t x, int_t y, int_t z,
-	                                  int_t expectedId, int_t newId)
+                                      int_t expectedId, int_t newId)
 {
     if (y < 0 || y >= WorldHeight::HEIGHT || expectedId < 0 || expectedId >= Block::BLOCK_REGISTRY_SIZE ||
         newId < 0 || newId >= Block::BLOCK_REGISTRY_SIZE || expectedId == newId)
@@ -1445,23 +1524,23 @@ bool World::replaceBlockForPopulation(int_t x, int_t y, int_t z,
     // This shortcut is valid only when neither the light field nor tile-entity
     // ownership can change. All other cases retain vanilla setBlock semantics.
     const bool lightEquivalent =
-        Block::lightOpacity[expectedId] == Block::lightOpacity[newId] &&
-        Block::lightValue[expectedId] == Block::lightValue[newId];
+    Block::lightOpacity[expectedId] == Block::lightOpacity[newId] &&
+    Block::lightValue[expectedId] == Block::lightValue[newId];
     const bool simpleBlocks =
-        !Block::isBlockContainer[expectedId] && !Block::isBlockContainer[newId];
-	const bool callbackFreeReplacement =
-		(expectedId == Block::stone->blockID &&
-		 (newId == Block::dirt->blockID || newId == Block::oreCoal->blockID ||
-		  newId == Block::oreIron->blockID || newId == Block::oreGold->blockID ||
-		  newId == Block::oreRedstone->blockID || newId == Block::oreDiamond->blockID ||
-		  newId == Block::oreLapis->blockID)) ||
-		(expectedId == Block::sand->blockID && newId == Block::blockClay->blockID) ||
-		(expectedId == Block::dirt->blockID && newId == Block::blockClay->blockID);
-	const bool fallingBlockReplacement =
-		(expectedId == Block::stone->blockID && newId == Block::gravel->blockID) ||
-		((expectedId == Block::dirt->blockID || expectedId == Block::grass->blockID) &&
-		 (newId == Block::sand->blockID || newId == Block::gravel->blockID));
-	const bool directReplacement = callbackFreeReplacement || fallingBlockReplacement;
+    !Block::isBlockContainer[expectedId] && !Block::isBlockContainer[newId];
+    const bool callbackFreeReplacement =
+    (expectedId == Block::stone->blockID &&
+    (newId == Block::dirt->blockID || newId == Block::oreCoal->blockID ||
+    newId == Block::oreIron->blockID || newId == Block::oreGold->blockID ||
+    newId == Block::oreRedstone->blockID || newId == Block::oreDiamond->blockID ||
+    newId == Block::oreLapis->blockID)) ||
+    (expectedId == Block::sand->blockID && newId == Block::blockClay->blockID) ||
+    (expectedId == Block::dirt->blockID && newId == Block::blockClay->blockID);
+    const bool fallingBlockReplacement =
+    (expectedId == Block::stone->blockID && newId == Block::gravel->blockID) ||
+    ((expectedId == Block::dirt->blockID || expectedId == Block::grass->blockID) &&
+    (newId == Block::sand->blockID || newId == Block::gravel->blockID));
+    const bool directReplacement = callbackFreeReplacement || fallingBlockReplacement;
 
     if (populationFastPathActive && lightEquivalent && simpleBlocks && directReplacement)
     {
@@ -1495,7 +1574,7 @@ Material* World::getBlockMaterial(int x, int y, int z)
     {
         return Material::air;
     }
-    
+
     return Block::blocksList[blockId]->blockMaterial;
 }
 
@@ -1505,12 +1584,12 @@ int World::getBlockMetadata(int x, int y, int z)
     {
         return 0;
     }
-    
+
     if (y < 0)
     {
         return 0;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return 0;
@@ -1548,12 +1627,12 @@ bool World::setBlockMetadata(int x, int y, int z, int metadata)
     {
         return false;
     }
-    
+
     if (y < 0)
     {
         return false;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return false;
@@ -1562,7 +1641,7 @@ bool World::setBlockMetadata(int x, int y, int z, int metadata)
     if (chunkLocalDecoration.isActive())
     {
         return chunkLocalDecoration.setBlock(x, y, z,
-            chunkLocalDecoration.getBlockId(x, y, z), metadata);
+                                             chunkLocalDecoration.getBlockId(x, y, z), metadata);
     }
 
     Chunk* chunk = getChunkFromChunkCoords(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4));
@@ -1580,7 +1659,7 @@ bool World::setBlockWithNotify(int x, int y, int z, int blockId)
             notifyBlockChange(x, y, z, blockId);
         return true;
     }
-    
+
     return false;
 }
 
@@ -1592,7 +1671,7 @@ bool World::setBlockAndMetadataWithNotify(int x, int y, int z, int blockId, int 
             notifyBlockChange(x, y, z, blockId);
         return true;
     }
-    
+
     return false;
 }
 
@@ -1622,7 +1701,7 @@ void World::markBlocksDirtyVertical(int x, int z, int y1, int y2)
         y1 = y2;
         y2 = temp;
     }
-    
+
     markBlocksDirty(x, y1, z, x, y2, z);
 }
 
@@ -1666,7 +1745,7 @@ void World::notifyBlockOfNeighborChange(int x, int y, int z, int blockId)
     {
         return;
     }
-    
+
     Block* block = Block::blocksList[getBlockId(x, y, z)];
     if (block != nullptr)
     {
@@ -1678,14 +1757,14 @@ bool World::canBlockSeeTheSky(int x, int y, int z)
 {
     if (chunkLocalDecoration.isActive())
         return y >= chunkLocalDecoration.getHeightValue(x, z);
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
         return populationChunk->canBlockSeeTheSky(x & 0xf, y, z & 0xf);
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, false);
     return getChunkFromChunkCoords(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4))->canBlockSeeTheSky(x & 0xf, y, z & 0xf);
@@ -1702,20 +1781,20 @@ int World::getFullBlockLightValue(int x, int y, int z)
     {
         return 0;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         y = WorldHeight::MAX_Y;
     }
 
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
         return populationChunk->getBlockLightValue(x & 0xf, y, z & 0xf, 0);
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, false);
 
@@ -1736,11 +1815,11 @@ int World::getBlockLightValue_do(int x, int y, int z, bool flag)
 
     if (chunkLocalDecoration.isActive())
         return y >= chunkLocalDecoration.getHeightValue(x, z) ? 15 : 0;
-    
+
     if (flag)
     {
         int blockId = getBlockId(x, y, z);
-        if (blockId == Block::stairSingle->blockID || 
+        if (blockId == Block::stairSingle->blockID ||
             blockId == Block::tilledField->blockID ||
             blockId == Block::stairCompactCobblestone->blockID ||
             blockId == Block::stairCompactPlanks->blockID)
@@ -1753,23 +1832,23 @@ int World::getBlockLightValue_do(int x, int y, int z, bool flag)
             return lightValue;
         }
     }
-    
+
     if (y < 0)
     {
         return 0;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         y = WorldHeight::MAX_Y;
     }
-    
+
     Chunk* chunk = nullptr;
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     chunk = getPopulationFastChunk(x, y, z);
     if (chunk != nullptr)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
-#endif
+    #endif
     if (chunk == nullptr)
     {
         if (populationFastPathActive)
@@ -1787,22 +1866,22 @@ bool World::canExistingBlockSeeTheSky(int x, int y, int z)
     {
         return false;
     }
-    
+
     if (y < 0)
     {
         return false;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return true;
     }
-    
+
     if (!chunkExists(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4)))
     {
         return false;
     }
-    
+
     Chunk* chunk = getChunkFromChunkCoords(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4));
     x &= 0xf;
     z &= 0xf;
@@ -1819,22 +1898,22 @@ int World::getHeightValue(int x, int z)
     if (chunkLocalDecoration.isActive())
         return chunkLocalDecoration.getHeightValue(x, z);
 
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     Chunk *populationChunk = getPopulationFastChunk(x, WorldHeight::MIN_Y, z);
     if (populationChunk != nullptr)
     {
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
         return populationChunk->getHeightValue(x & 0xf, z & 0xf);
     }
-#endif
+    #endif
     if (populationFastPathActive)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, false);
-    
+
     if (!chunkExists(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4)))
     {
         return 0;
     }
-    
+
     Chunk* chunk = getChunkFromChunkCoords(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4));
     return chunk->getHeightValue(x & 0xf, z & 0xf);
 }
@@ -1851,11 +1930,11 @@ int_t World::getTopSolidOrLiquidBlock(int_t x, int_t z)
         return chunkLocalDecoration.getTopSolidOrLiquidBlock(x, z);
 
     Chunk *chunk = nullptr;
-#if PLATFORM_POPULATION_BLOCK_WRITER
+    #if PLATFORM_POPULATION_BLOCK_WRITER
     chunk = getPopulationFastChunk(x, WorldHeight::MIN_Y, z);
     if (chunk != nullptr)
         platformProfilePopulationAccess(PlatformPopulationAccessKind::ChunkLookup, true);
-#endif
+    #endif
     if (chunk == nullptr)
     {
         if (populationFastPathActive)
@@ -1948,10 +2027,10 @@ bool World::canSnowAt(int_t x, int_t y, int_t z)
     const int_t blockBelow = getBlockId(x, y - 1, z);
     const int_t blockHere = getBlockId(x, y, z);
     return blockHere == 0 &&
-           Block::snow->canPlaceBlockAt(this, x, y, z) &&
-           blockBelow != 0 && blockBelow != Block::ice->blockID &&
-           blockBelow < Block::BLOCK_REGISTRY_SIZE && Block::blocksList[blockBelow] != nullptr &&
-           Block::blocksList[blockBelow]->blockMaterial->getIsSolid();
+    Block::snow->canPlaceBlockAt(this, x, y, z) &&
+    blockBelow != 0 && blockBelow != Block::ice->blockID &&
+    blockBelow < Block::BLOCK_REGISTRY_SIZE && Block::blocksList[blockBelow] != nullptr &&
+    Block::blocksList[blockBelow]->blockMaterial->getIsSolid();
 }
 
 void World::neighborLightPropagationChanged(EnumSkyBlock* enumSkyBlock, int x, int y, int z, int lightValue)
@@ -1960,12 +2039,12 @@ void World::neighborLightPropagationChanged(EnumSkyBlock* enumSkyBlock, int x, i
     {
         return;
     }
-    
+
     if (!blockExists(x, y, z))
     {
         return;
     }
-    
+
     if (enumSkyBlock == EnumSkyBlock::Sky)
     {
         if (canExistingBlockSeeTheSky(x, y, z))
@@ -1981,7 +2060,7 @@ void World::neighborLightPropagationChanged(EnumSkyBlock* enumSkyBlock, int x, i
             lightValue = Block::lightValue[blockId];
         }
     }
-    
+
     if (getSavedLightValue(enumSkyBlock, x, y, z) != lightValue)
     {
         scheduleLightingUpdate(enumSkyBlock, x, y, z, x, y, z);
@@ -2020,8 +2099,8 @@ int_t World::getSkyBlockTypeBrightness(EnumSkyBlock *enumSkyBlock, int_t x, int_
 
     Chunk *chunk = getChunkFromChunkCoords(chunkX, chunkZ);
     return chunk != nullptr
-        ? chunk->getSavedLightValue(enumSkyBlock, x & 0xf, y, z & 0xf)
-        : enumSkyBlock->defaultLightValue;
+    ? chunk->getSavedLightValue(enumSkyBlock, x & 0xf, y, z & 0xf)
+    : enumSkyBlock->defaultLightValue;
 }
 
 int World::getSavedLightValue(EnumSkyBlock* enumSkyBlock, int x, int y, int z)
@@ -2042,8 +2121,8 @@ int World::getSavedLightValue(EnumSkyBlock* enumSkyBlock, int x, int y, int z)
 
     Chunk* chunk = getChunkFromChunkCoords(chunkX, chunkZ);
     return chunk != nullptr
-        ? chunk->getSavedLightValue(enumSkyBlock, x & 0xf, y, z & 0xf)
-        : enumSkyBlock->defaultLightValue;
+    ? chunk->getSavedLightValue(enumSkyBlock, x & 0xf, y, z & 0xf)
+    : enumSkyBlock->defaultLightValue;
 }
 
 int_t World::getLightBrightnessForSkyBlocks(int_t x, int_t y, int_t z, int_t minimumBlockLight)
@@ -2061,25 +2140,25 @@ void World::setLightValue(EnumSkyBlock* enumSkyBlock, int x, int y, int z, int l
     {
         return;
     }
-    
+
     if (y < 0)
     {
         return;
     }
-    
+
     if (y >= WorldHeight::HEIGHT)
     {
         return;
     }
-    
+
     if (!chunkExists(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4)))
     {
         return;
     }
-    
+
     Chunk* chunk = getChunkFromChunkCoords(JavaArithmetic::intShr(x, 4), JavaArithmetic::intShr(z, 4));
     chunk->setLightValue(enumSkyBlock, x & 0xf, y, z & 0xf, lightValue);
-    
+
     for (size_t i = 0; i < worldAccesses.size(); i++)
     {
         worldAccesses[i]->markBlockAndNeighborsNeedsUpdate(x, y, z);
@@ -2102,14 +2181,14 @@ void World::func_48464_p(int_t x, int_t y, int_t z)
 
 float World::getBrightness(int x, int y, int z, int minLight)
 {
-#if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
+    #if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
     // Match ChunkCache::getBrightness() and World::getLightBrightness(): while PS2
     // skylight propagation is incomplete, every brightness accessor must report
     // full light or geometry colored through this path (block-edit re-renders via
     // the world-backed RenderBlocks, particles, entity shadows) comes out black.
     (void)x; (void)y; (void)z; (void)minLight;
     return 1.0f;
-#endif
+    #endif
     int lightValue = getBlockLightValue(x, y, z);
     if (lightValue < minLight)
     {
@@ -2121,10 +2200,10 @@ float World::getBrightness(int x, int y, int z, int minLight)
 
 float World::getLightBrightness(int x, int y, int z)
 {
-#if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
+    #if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
     (void)x; (void)y; (void)z;
     return 1.0f;
-#endif
+    #endif
     return worldProvider->lightBrightnessTable[getBlockLightValue(x, y, z)];
 }
 
@@ -2146,218 +2225,218 @@ MovingObjectPosition* World::rayTraceBlocks_do(Vec3D* vec1, Vec3D* vec2, bool fl
 #if PLATFORM_FLOAT_VECTOR_MATH
 namespace
 {
-// Single-precision form of the block ray march in World::rayTraceBlocks below.
-// Step order, the plane selection and the byte0 face codes follow the double
-// version line for line; two things differ.
-//
-// The walk is carried relative to the integer block the ray starts in, so single
-// precision buys resolution along the ray instead of resolution against the
-// world origin -- the latter is what makes plain float unusable for Minecraft
-// coordinates. The ray is bounded on both ends: the block picker asks for about
-// five blocks and the loop itself stops after 200 steps, so the largest offset
-// this frame has to represent is small and its ulp stays far below the block
-// grid. Plane targets are whole blocks, so they are computed as integers and
-// converted once, which keeps every axis crossing exact.
-//
-// The per-iteration std::isnan probes are also gone. Each is an __unorddf2 call
-// on the EE, and the R5900 FPU cannot hand one back: it has no NaN encoding and
-// flushes instead. The only way d3/d4/d5 could have been NaN is a 0/0 division,
-// which needs flag2 set while d6 is zero -- impossible, because both endpoints
-// having the same coordinate makes them floor to the same block and clears the
-// flag. The caller still range-checks vec1 and vec2 before the march starts.
-//
-// vec1 is advanced in place in absolute world coordinates at the end of every
-// step, because Block::collisionRayTrace reads it in world space.
-MovingObjectPosition *rayMarchBlocksFloat(World *world, Vec3D *vec1, Vec3D *vec2,
-                                          int_t startX, int_t startY, int_t startZ,
-                                          int_t endX, int_t endY, int_t endZ,
-                                          bool stopOnLiquid, bool ignoreNonCollidable)
-{
-    const int_t baseX = startX;
-    const int_t baseY = startY;
-    const int_t baseZ = startZ;
-
-    float posX = (float)(vec1->xCoord - (double)baseX);
-    float posY = (float)(vec1->yCoord - (double)baseY);
-    float posZ = (float)(vec1->zCoord - (double)baseZ);
-    const float endPosX = (float)(vec2->xCoord - (double)baseX);
-    const float endPosY = (float)(vec2->yCoord - (double)baseY);
-    const float endPosZ = (float)(vec2->zCoord - (double)baseZ);
-
-    for (int_t l1 = 200; l1-- >= 0;)
+    // Single-precision form of the block ray march in World::rayTraceBlocks below.
+    // Step order, the plane selection and the byte0 face codes follow the double
+    // version line for line; two things differ.
+    //
+    // The walk is carried relative to the integer block the ray starts in, so single
+    // precision buys resolution along the ray instead of resolution against the
+    // world origin -- the latter is what makes plain float unusable for Minecraft
+    // coordinates. The ray is bounded on both ends: the block picker asks for about
+    // five blocks and the loop itself stops after 200 steps, so the largest offset
+    // this frame has to represent is small and its ulp stays far below the block
+    // grid. Plane targets are whole blocks, so they are computed as integers and
+    // converted once, which keeps every axis crossing exact.
+    //
+    // The per-iteration std::isnan probes are also gone. Each is an __unorddf2 call
+    // on the EE, and the R5900 FPU cannot hand one back: it has no NaN encoding and
+    // flushes instead. The only way d3/d4/d5 could have been NaN is a 0/0 division,
+    // which needs flag2 set while d6 is zero -- impossible, because both endpoints
+    // having the same coordinate makes them floor to the same block and clears the
+    // flag. The caller still range-checks vec1 and vec2 before the march starts.
+    //
+    // vec1 is advanced in place in absolute world coordinates at the end of every
+    // step, because Block::collisionRayTrace reads it in world space.
+    MovingObjectPosition *rayMarchBlocksFloat(World *world, Vec3D *vec1, Vec3D *vec2,
+                                              int_t startX, int_t startY, int_t startZ,
+                                              int_t endX, int_t endY, int_t endZ,
+                                              bool stopOnLiquid, bool ignoreNonCollidable)
     {
-        if (startX == endX && startY == endY && startZ == endZ)
-        {
-            return nullptr;
-        }
+        const int_t baseX = startX;
+        const int_t baseY = startY;
+        const int_t baseZ = startZ;
 
-        bool flag2 = true;
-        bool flag3 = true;
-        bool flag4 = true;
-        float d = 999.0f;
-        float d1 = 999.0f;
-        float d2 = 999.0f;
+        float posX = (float)(vec1->xCoord - (double)baseX);
+        float posY = (float)(vec1->yCoord - (double)baseY);
+        float posZ = (float)(vec1->zCoord - (double)baseZ);
+        const float endPosX = (float)(vec2->xCoord - (double)baseX);
+        const float endPosY = (float)(vec2->yCoord - (double)baseY);
+        const float endPosZ = (float)(vec2->zCoord - (double)baseZ);
 
-        if (endX > startX)
+        for (int_t l1 = 200; l1-- >= 0;)
         {
-            d = (float)(startX + 1 - baseX);
-        }
-        else if (endX < startX)
-        {
-            d = (float)(startX - baseX);
-        }
-        else
-        {
-            flag2 = false;
-        }
+            if (startX == endX && startY == endY && startZ == endZ)
+            {
+                return nullptr;
+            }
 
-        if (endY > startY)
-        {
-            d1 = (float)(startY + 1 - baseY);
-        }
-        else if (endY < startY)
-        {
-            d1 = (float)(startY - baseY);
-        }
-        else
-        {
-            flag3 = false;
-        }
+            bool flag2 = true;
+            bool flag3 = true;
+            bool flag4 = true;
+            float d = 999.0f;
+            float d1 = 999.0f;
+            float d2 = 999.0f;
 
-        if (endZ > startZ)
-        {
-            d2 = (float)(startZ + 1 - baseZ);
-        }
-        else if (endZ < startZ)
-        {
-            d2 = (float)(startZ - baseZ);
-        }
-        else
-        {
-            flag4 = false;
-        }
-
-        float d3 = 999.0f;
-        float d4 = 999.0f;
-        float d5 = 999.0f;
-        const float d6 = endPosX - posX;
-        const float d7 = endPosY - posY;
-        const float d8 = endPosZ - posZ;
-
-        if (flag2)
-        {
-            d3 = (d - posX) / d6;
-        }
-
-        if (flag3)
-        {
-            d4 = (d1 - posY) / d7;
-        }
-
-        if (flag4)
-        {
-            d5 = (d2 - posZ) / d8;
-        }
-
-        unsigned char byte0 = 0;
-
-        if (d3 < d4 && d3 < d5)
-        {
             if (endX > startX)
             {
-                byte0 = 4;
+                d = (float)(startX + 1 - baseX);
+            }
+            else if (endX < startX)
+            {
+                d = (float)(startX - baseX);
             }
             else
             {
-                byte0 = 5;
+                flag2 = false;
             }
 
-            posX = d;
-            posY += d7 * d3;
-            posZ += d8 * d3;
-        }
-        else if (d4 < d5)
-        {
             if (endY > startY)
             {
-                byte0 = 0;
+                d1 = (float)(startY + 1 - baseY);
+            }
+            else if (endY < startY)
+            {
+                d1 = (float)(startY - baseY);
             }
             else
             {
-                byte0 = 1;
+                flag3 = false;
             }
 
-            posX += d6 * d4;
-            posY = d1;
-            posZ += d8 * d4;
-        }
-        else
-        {
             if (endZ > startZ)
             {
-                byte0 = 2;
+                d2 = (float)(startZ + 1 - baseZ);
+            }
+            else if (endZ < startZ)
+            {
+                d2 = (float)(startZ - baseZ);
             }
             else
             {
-                byte0 = 3;
+                flag4 = false;
             }
 
-            posX += d6 * d5;
-            posY += d7 * d5;
-            posZ = d2;
-        }
+            float d3 = 999.0f;
+            float d4 = 999.0f;
+            float d5 = 999.0f;
+            const float d6 = endPosX - posX;
+            const float d7 = endPosY - posY;
+            const float d8 = endPosZ - posZ;
 
-        vec1->xCoord = (double)baseX + (double)posX;
-        vec1->yCoord = (double)baseY + (double)posY;
-        vec1->zCoord = (double)baseZ + (double)posZ;
-
-        // floor(base + local) == base + floor(local) for an integer base, so the
-        // block the march lands on is the one the double path would have picked.
-        Vec3D *vec3d2 = Vec3D::createVector(vec1->xCoord, vec1->yCoord, vec1->zCoord);
-        startX = JavaArithmetic::intAdd(baseX, MathHelper::floor_float(posX));
-        vec3d2->xCoord = (double)startX;
-
-        if (byte0 == 5)
-        {
-            startX = JavaArithmetic::intSub(startX, 1);
-            vec3d2->xCoord++;
-        }
-
-        startY = JavaArithmetic::intAdd(baseY, MathHelper::floor_float(posY));
-        vec3d2->yCoord = (double)startY;
-
-        if (byte0 == 1)
-        {
-            startY = JavaArithmetic::intSub(startY, 1);
-            vec3d2->yCoord++;
-        }
-
-        startZ = JavaArithmetic::intAdd(baseZ, MathHelper::floor_float(posZ));
-        vec3d2->zCoord = (double)startZ;
-
-        if (byte0 == 3)
-        {
-            startZ = JavaArithmetic::intSub(startZ, 1);
-            vec3d2->zCoord++;
-        }
-
-        int_t j2 = world->getBlockId(startX, startY, startZ);
-        int_t k2 = world->getBlockMetadata(startX, startY, startZ);
-        Block* block1 = Block::blocksList[j2];
-
-        if ((!ignoreNonCollidable || block1 == nullptr || block1->getCollisionBoundingBoxFromPool(world, startX, startY, startZ) != nullptr)
-            && j2 > 0 && block1->canCollideCheck(k2, stopOnLiquid))
-        {
-            MovingObjectPosition* movingObjectPosition1 = block1->collisionRayTrace(world, startX, startY, startZ, vec1, vec2);
-            if (movingObjectPosition1 != nullptr)
+            if (flag2)
             {
-                return movingObjectPosition1;
+                d3 = (d - posX) / d6;
+            }
+
+            if (flag3)
+            {
+                d4 = (d1 - posY) / d7;
+            }
+
+            if (flag4)
+            {
+                d5 = (d2 - posZ) / d8;
+            }
+
+            unsigned char byte0 = 0;
+
+            if (d3 < d4 && d3 < d5)
+            {
+                if (endX > startX)
+                {
+                    byte0 = 4;
+                }
+                else
+                {
+                    byte0 = 5;
+                }
+
+                posX = d;
+                posY += d7 * d3;
+                posZ += d8 * d3;
+            }
+            else if (d4 < d5)
+            {
+                if (endY > startY)
+                {
+                    byte0 = 0;
+                }
+                else
+                {
+                    byte0 = 1;
+                }
+
+                posX += d6 * d4;
+                posY = d1;
+                posZ += d8 * d4;
+            }
+            else
+            {
+                if (endZ > startZ)
+                {
+                    byte0 = 2;
+                }
+                else
+                {
+                    byte0 = 3;
+                }
+
+                posX += d6 * d5;
+                posY += d7 * d5;
+                posZ = d2;
+            }
+
+            vec1->xCoord = (double)baseX + (double)posX;
+            vec1->yCoord = (double)baseY + (double)posY;
+            vec1->zCoord = (double)baseZ + (double)posZ;
+
+            // floor(base + local) == base + floor(local) for an integer base, so the
+            // block the march lands on is the one the double path would have picked.
+            Vec3D *vec3d2 = Vec3D::createVector(vec1->xCoord, vec1->yCoord, vec1->zCoord);
+            startX = JavaArithmetic::intAdd(baseX, MathHelper::floor_float(posX));
+            vec3d2->xCoord = (double)startX;
+
+            if (byte0 == 5)
+            {
+                startX = JavaArithmetic::intSub(startX, 1);
+                vec3d2->xCoord++;
+            }
+
+            startY = JavaArithmetic::intAdd(baseY, MathHelper::floor_float(posY));
+            vec3d2->yCoord = (double)startY;
+
+            if (byte0 == 1)
+            {
+                startY = JavaArithmetic::intSub(startY, 1);
+                vec3d2->yCoord++;
+            }
+
+            startZ = JavaArithmetic::intAdd(baseZ, MathHelper::floor_float(posZ));
+            vec3d2->zCoord = (double)startZ;
+
+            if (byte0 == 3)
+            {
+                startZ = JavaArithmetic::intSub(startZ, 1);
+                vec3d2->zCoord++;
+            }
+
+            int_t j2 = world->getBlockId(startX, startY, startZ);
+            int_t k2 = world->getBlockMetadata(startX, startY, startZ);
+            Block* block1 = Block::blocksList[j2];
+
+            if ((!ignoreNonCollidable || block1 == nullptr || block1->getCollisionBoundingBoxFromPool(world, startX, startY, startZ) != nullptr)
+                && j2 > 0 && block1->canCollideCheck(k2, stopOnLiquid))
+            {
+                MovingObjectPosition* movingObjectPosition1 = block1->collisionRayTrace(world, startX, startY, startZ, vec1, vec2);
+                if (movingObjectPosition1 != nullptr)
+                {
+                    return movingObjectPosition1;
+                }
             }
         }
-    }
 
-    return nullptr;
-}
+        return nullptr;
+    }
 }
 #endif
 
@@ -2367,12 +2446,12 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
     {
         return nullptr;
     }
-    
+
     if (std::isnan(vec2->xCoord) || std::isnan(vec2->yCoord) || std::isnan(vec2->zCoord))
     {
         return nullptr;
     }
-    
+
     int endX = MathHelper::floor_double(vec2->xCoord);
     int endY = MathHelper::floor_double(vec2->yCoord);
     int endZ = MathHelper::floor_double(vec2->zCoord);
@@ -2382,8 +2461,8 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
     int blockId = getBlockId(startX, startY, startZ);
     int metadata = getBlockMetadata(startX, startY, startZ);
     Block* block = Block::blocksList[blockId];
-    
-    if ((!flag1 || block == nullptr || block->getCollisionBoundingBoxFromPool(this, startX, startY, startZ) != nullptr) 
+
+    if ((!flag1 || block == nullptr || block->getCollisionBoundingBoxFromPool(this, startX, startY, startZ) != nullptr)
         && blockId > 0 && block->canCollideCheck(metadata, flag))
     {
         MovingObjectPosition* movingObjectPosition = block->collisionRayTrace(this, startX, startY, startZ, vec1, vec2);
@@ -2392,10 +2471,10 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
             return movingObjectPosition;
         }
     }
-    
-#if PLATFORM_FLOAT_VECTOR_MATH
+
+    #if PLATFORM_FLOAT_VECTOR_MATH
     return rayMarchBlocksFloat(this, vec1, vec2, startX, startY, startZ, endX, endY, endZ, flag, flag1);
-#else
+    #else
     for (int l1 = 200; l1-- >= 0;)
     {
         if (std::isnan(vec1->xCoord) || std::isnan(vec1->yCoord) || std::isnan(vec1->zCoord))
@@ -2407,14 +2486,14 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
         {
             return nullptr;
         }
-        
+
         bool flag2 = true;
         bool flag3 = true;
         bool flag4 = true;
         double d = 999.0;
         double d1 = 999.0;
         double d2 = 999.0;
-        
+
         if (endX > startX)
         {
             d = (double)startX + 1.0;
@@ -2427,7 +2506,7 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
         {
             flag2 = false;
         }
-        
+
         if (endY > startY)
         {
             d1 = (double)startY + 1.0;
@@ -2440,7 +2519,7 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
         {
             flag3 = false;
         }
-        
+
         if (endZ > startZ)
         {
             d2 = (double)startZ + 1.0;
@@ -2453,31 +2532,31 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
         {
             flag4 = false;
         }
-        
+
         double d3 = 999.0;
         double d4 = 999.0;
         double d5 = 999.0;
         double d6 = vec2->xCoord - vec1->xCoord;
         double d7 = vec2->yCoord - vec1->yCoord;
         double d8 = vec2->zCoord - vec1->zCoord;
-        
+
         if (flag2)
         {
             d3 = (d - vec1->xCoord) / d6;
         }
-        
+
         if (flag3)
         {
             d4 = (d1 - vec1->yCoord) / d7;
         }
-        
+
         if (flag4)
         {
             d5 = (d2 - vec1->zCoord) / d8;
         }
-        
+
         unsigned char byte0 = 0;
-        
+
         if (d3 < d4 && d3 < d5)
         {
             if (endX > startX)
@@ -2488,7 +2567,7 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
             {
                 byte0 = 5;
             }
-            
+
             vec1->xCoord = d;
             vec1->yCoord += d7 * d3;
             vec1->zCoord += d8 * d3;
@@ -2503,7 +2582,7 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
             {
                 byte0 = 1;
             }
-            
+
             vec1->xCoord += d6 * d4;
             vec1->yCoord = d1;
             vec1->zCoord += d8 * d4;
@@ -2518,42 +2597,42 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
             {
                 byte0 = 3;
             }
-            
+
             vec1->xCoord += d6 * d5;
             vec1->yCoord += d7 * d5;
             vec1->zCoord = d2;
         }
-        
+
         Vec3D* vec3d2 = Vec3D::createVector(vec1->xCoord, vec1->yCoord, vec1->zCoord);
         startX = (int)(vec3d2->xCoord = MathHelper::floor_double(vec1->xCoord));
-        
+
         if (byte0 == 5)
         {
             startX = JavaArithmetic::intSub(startX, 1);
             vec3d2->xCoord++;
         }
-        
+
         startY = (int)(vec3d2->yCoord = MathHelper::floor_double(vec1->yCoord));
-        
+
         if (byte0 == 1)
         {
             startY = JavaArithmetic::intSub(startY, 1);
             vec3d2->yCoord++;
         }
-        
+
         startZ = (int)(vec3d2->zCoord = MathHelper::floor_double(vec1->zCoord));
-        
+
         if (byte0 == 3)
         {
             startZ = JavaArithmetic::intSub(startZ, 1);
             vec3d2->zCoord++;
         }
-        
+
         int j2 = getBlockId(startX, startY, startZ);
         int k2 = getBlockMetadata(startX, startY, startZ);
         Block* block1 = Block::blocksList[j2];
-        
-        if ((!flag1 || block1 == nullptr || block1->getCollisionBoundingBoxFromPool(this, startX, startY, startZ) != nullptr) 
+
+        if ((!flag1 || block1 == nullptr || block1->getCollisionBoundingBoxFromPool(this, startX, startY, startZ) != nullptr)
             && j2 > 0 && block1->canCollideCheck(k2, flag))
         {
             MovingObjectPosition* movingObjectPosition1 = block1->collisionRayTrace(this, startX, startY, startZ, vec1, vec2);
@@ -2565,7 +2644,7 @@ MovingObjectPosition* World::rayTraceBlocks(Vec3D* vec1, Vec3D* vec2, bool flag,
     }
 
     return nullptr;
-#endif
+    #endif
 }
 
 MovingObjectPosition *World::rayTraceBlocks_do_do(Vec3D *start, Vec3D *end, bool stopOnLiquid, bool ignoreNonCollidable)
@@ -2617,7 +2696,7 @@ bool World::entityJoinedWorld(Entity* entity)
     int chunkX = MathHelper::floor_double(entity->posX / 16.0);
     int chunkZ = MathHelper::floor_double(entity->posZ / 16.0);
     bool flag = false;
-    
+
     if (entity->isPlayer())
     {
         flag = true;
@@ -2640,7 +2719,7 @@ bool World::entityJoinedWorld(Entity* entity)
             playerEntities.push_back(entityPlayer);
             updateAllPlayersSleepingFlag();
         }
-        
+
         getChunkFromChunkCoords(chunkX, chunkZ)->addEntity(entity);
         loadedEntityList.push_back(entity);
         trackLoadedEntityPointer(entity);
@@ -2648,7 +2727,7 @@ bool World::entityJoinedWorld(Entity* entity)
         obtainEntitySkin(entity);
         return true;
     }
-    
+
     return false;
 }
 
@@ -2694,14 +2773,14 @@ void World::setEntityDead(Entity* entity)
     {
         entity->riddenByEntity->mountEntity(nullptr);
     }
-    
+
     if (entity->ridingEntity != nullptr)
     {
         entity->mountEntity(nullptr);
     }
-    
+
     entity->setEntityDead();
-    
+
     if (entity->isPlayer())
     {
         auto it = std::find(playerEntities.begin(), playerEntities.end(), static_cast<EntityPlayer*>(entity));
@@ -2755,17 +2834,17 @@ void World::removeWorldAccess(IWorldAccess* worldAccess)
 std::vector<AxisAlignedBB*> &World::getCollidingBoundingBoxes(Entity* entity, AxisAlignedBB* aabb)
 {
     collidingBoundingBoxes.clear();
-    
-#if PLATFORM_FAST_BLOCK_COLLISIONS
+
+    #if PLATFORM_FAST_BLOCK_COLLISIONS
     platformCollectBlockCollisions(this, aabb, collidingBoundingBoxes);
-#else
+    #else
     int minX = MathHelper::floor_double(aabb->minX);
     int maxX = MathHelper::floor_double(aabb->maxX + 1.0);
     int minY = MathHelper::floor_double(aabb->minY);
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     for (int x = minX; x < maxX; x++)
     {
         for (int z = minZ; z < maxZ; z++)
@@ -2774,7 +2853,7 @@ std::vector<AxisAlignedBB*> &World::getCollidingBoundingBoxes(Entity* entity, Ax
             {
                 continue;
             }
-            
+
             for (int y = minY - 1; y < maxY; y++)
             {
                 Block* block = Block::blocksList[getBlockId(x, y, z)];
@@ -2785,11 +2864,11 @@ std::vector<AxisAlignedBB*> &World::getCollidingBoundingBoxes(Entity* entity, Ax
             }
         }
     }
-#endif
-    
+    #endif
+
     double d = 0.25;
     const auto& list = getEntitiesWithinAABBExcludingEntity(entity, aabb->expand(d, d, d));
-    
+
     for (size_t j2 = 0; j2 < list.size(); j2++)
     {
         AxisAlignedBB* aabb1 = list[j2]->getBoundingBox();
@@ -2797,14 +2876,14 @@ std::vector<AxisAlignedBB*> &World::getCollidingBoundingBoxes(Entity* entity, Ax
         {
             collidingBoundingBoxes.push_back(aabb1);
         }
-        
+
         aabb1 = entity->getCollisionBox(list[j2]);
         if (aabb1 != nullptr && aabb1->intersectsWith(aabb))
         {
             collidingBoundingBoxes.push_back(aabb1);
         }
     }
-    
+
     return collidingBoundingBoxes;
 }
 
@@ -2862,22 +2941,22 @@ int World::calculateSkylightSubtracted(float partialTicks)
 {
     float celestialAngle = getCelestialAngle(partialTicks);
     float f2 = 1.0f - (MathHelper::cos(celestialAngle * 3.1415927f * 2.0f) * 2.0f + 0.5f);
-    
+
     if (f2 < 0.0f)
     {
         f2 = 0.0f;
     }
-    
+
     if (f2 > 1.0f)
     {
         f2 = 1.0f;
     }
-    
+
     f2 = 1.0f - f2;
     f2 = (float)((double)f2 * (1.0 - (double)(getRainStrengthInterpolated(partialTicks) * 5.0f) / 16.0));
     f2 = (float)((double)f2 * (1.0 - (double)(getThunderStrengthInterpolated(partialTicks) * 5.0f) / 16.0));
     f2 = 1.0f - f2;
-    
+
     return (int)(f2 * 11.0f);
 }
 
@@ -2885,31 +2964,31 @@ Vec3D* World::getSkyColor(Entity* entity, float partialTicks)
 {
     float celestialAngle = getCelestialAngle(partialTicks);
     float f2 = MathHelper::cos(celestialAngle * 3.1415927f * 2.0f) * 2.0f + 0.5f;
-    
+
     if (f2 < 0.0f)
     {
         f2 = 0.0f;
     }
-    
+
     if (f2 > 1.0f)
     {
         f2 = 1.0f;
     }
-    
+
     int i = MathHelper::floor_double(entity->posX);
     int j = MathHelper::floor_double(entity->posZ);
     BiomeGenBase *biome = getBiomeGenForCoords(i, j);
     float f3 = biome != nullptr ? biome->getFloatTemperature() : BiomeGenBase::plains->getFloatTemperature();
     int k = (biome != nullptr ? biome : BiomeGenBase::plains)->getSkyColorByTemp(f3);
-    
+
     float f4 = (float)(k >> 16 & 0xff) / 255.0f;
     float f5 = (float)(k >> 8 & 0xff) / 255.0f;
     float f6 = (float)(k & 0xff) / 255.0f;
-    
+
     f4 *= f2;
     f5 *= f2;
     f6 *= f2;
-    
+
     float f7 = getRainStrengthInterpolated(partialTicks);
     if (f7 > 0.0f)
     {
@@ -2919,7 +2998,7 @@ Vec3D* World::getSkyColor(Entity* entity, float partialTicks)
         f5 = f5 * f10 + f8 * (1.0f - f10);
         f6 = f6 * f10 + f8 * (1.0f - f10);
     }
-    
+
     float f9 = getThunderStrengthInterpolated(partialTicks);
     if (f9 > 0.0f)
     {
@@ -2929,7 +3008,7 @@ Vec3D* World::getSkyColor(Entity* entity, float partialTicks)
         f5 = f5 * f13 + f11 * (1.0f - f13);
         f6 = f6 * f13 + f11 * (1.0f - f13);
     }
-    
+
     if (field_27172_i > 0)
     {
         float f12 = (float)field_27172_i - partialTicks;
@@ -2942,7 +3021,7 @@ Vec3D* World::getSkyColor(Entity* entity, float partialTicks)
         f5 = f5 * (1.0f - f12) + 0.8f * f12;
         f6 = f6 * (1.0f - f12) + 1.0f * f12;
     }
-    
+
     return Vec3D::createVector(f4, f5, f6);
 }
 
@@ -2966,21 +3045,21 @@ Vec3D* World::getCloudFogColor(float partialTicks)
 {
     float celestialAngle = getCelestialAngle(partialTicks);
     float f2 = MathHelper::cos(celestialAngle * 3.1415927f * 2.0f) * 2.0f + 0.5f;
-    
+
     if (f2 < 0.0f)
     {
         f2 = 0.0f;
     }
-    
+
     if (f2 > 1.0f)
     {
         f2 = 1.0f;
     }
-    
+
     float f3 = (float)(field_1019_F >> 16 & 255LL) / 255.0f;
     float f4 = (float)(field_1019_F >> 8 & 255LL) / 255.0f;
     float f5 = (float)(field_1019_F & 255LL) / 255.0f;
-    
+
     float f6 = getRainStrengthInterpolated(partialTicks);
     if (f6 > 0.0f)
     {
@@ -2990,11 +3069,11 @@ Vec3D* World::getCloudFogColor(float partialTicks)
         f4 = f4 * f9 + f7 * (1.0f - f9);
         f5 = f5 * f9 + f7 * (1.0f - f9);
     }
-    
+
     f3 *= f2 * 0.9f + 0.1f;
     f4 *= f2 * 0.9f + 0.1f;
     f5 *= f2 * 0.85f + 0.15f;
-    
+
     float f8 = getThunderStrengthInterpolated(partialTicks);
     if (f8 > 0.0f)
     {
@@ -3004,7 +3083,7 @@ Vec3D* World::getCloudFogColor(float partialTicks)
         f4 = f4 * f11 + f10 * (1.0f - f11);
         f5 = f5 * f11 + f10 * (1.0f - f11);
     }
-    
+
     return Vec3D::createVector(f3, f4, f5);
 }
 
@@ -3035,12 +3114,12 @@ int World::findTopSolidBlock(int x, int z)
     int y = WorldHeight::MAX_Y;
     x &= 0xf;
     z &= 0xf;
-    
+
     while (y > 0)
     {
         int blockId = chunk->getBlockID(x, y, z);
         Material* material = (blockId != 0) ? Block::blocksList[blockId]->blockMaterial : Material::air;
-        
+
         if (!material->getIsSolid() && !material->getIsLiquid())
         {
             y--;
@@ -3050,7 +3129,7 @@ int World::findTopSolidBlock(int x, int z)
             return y + 1;
         }
     }
-    
+
     return -1;
 }
 
@@ -3058,17 +3137,17 @@ float World::getStarBrightness(float partialTicks)
 {
     float celestialAngle = getCelestialAngle(partialTicks);
     float f2 = 1.0f - (MathHelper::cos(celestialAngle * 3.1415927f * 2.0f) * 2.0f + 0.75f);
-    
+
     if (f2 < 0.0f)
     {
         f2 = 0.0f;
     }
-    
+
     if (f2 > 1.0f)
     {
         f2 = 1.0f;
     }
-    
+
     return f2 * f2 * 0.5f;
 }
 
@@ -3081,7 +3160,7 @@ void World::scheduleBlockUpdate(int x, int y, int z, int blockId, int delay)
     if (scheduledUpdatesAreImmediate)
     {
         if (checkChunksExist(JavaArithmetic::intSub(x, RANGE), JavaArithmetic::intSub(y, RANGE), JavaArithmetic::intSub(z, RANGE),
-                             JavaArithmetic::intAdd(x, RANGE), JavaArithmetic::intAdd(y, RANGE), JavaArithmetic::intAdd(z, RANGE)))
+            JavaArithmetic::intAdd(x, RANGE), JavaArithmetic::intAdd(y, RANGE), JavaArithmetic::intAdd(z, RANGE)))
         {
             int currentBlockId = getBlockId(x, y, z);
             if (currentBlockId == blockId && currentBlockId > 0)
@@ -3093,20 +3172,20 @@ void World::scheduleBlockUpdate(int x, int y, int z, int blockId, int delay)
     }
 
     if (!checkChunksExist(JavaArithmetic::intSub(x, RANGE), JavaArithmetic::intSub(y, RANGE), JavaArithmetic::intSub(z, RANGE),
-                          JavaArithmetic::intAdd(x, RANGE), JavaArithmetic::intAdd(y, RANGE), JavaArithmetic::intAdd(z, RANGE)))
+        JavaArithmetic::intAdd(x, RANGE), JavaArithmetic::intAdd(y, RANGE), JavaArithmetic::intAdd(z, RANGE)))
     {
         return;
     }
 
     const long_t scheduledTime = blockId > 0
-        ? JavaArithmetic::longAdd(static_cast<long_t>(delay), worldInfo->getWorldTime())
-        : 0;
+    ? JavaArithmetic::longAdd(static_cast<long_t>(delay), worldInfo->getWorldTime())
+    : 0;
 
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     if (pcLegacyTickScheduler == nullptr)
         pcLegacyTickScheduler = new PcLegacyTickScheduler();
     pcLegacyTickScheduler->schedule(x, y, z, blockId, scheduledTime);
-#else
+    #else
     NextTickListEntry* entry = new NextTickListEntry(x, y, z, blockId);
     entry->setScheduledTime(scheduledTime);
 
@@ -3122,20 +3201,20 @@ void World::scheduleBlockUpdate(int x, int y, int z, int blockId, int delay)
         // candidate must be destroyed or it leaks on every duplicate schedule.
         delete entry;
     }
-#endif
+    #endif
 }
 
 void World::scheduleBlockUpdateFromLoad(int_t x, int_t y, int_t z, int_t blockId, int_t delay)
 {
     const long_t scheduledTime = blockId > 0
-        ? JavaArithmetic::longAdd(static_cast<long_t>(delay), worldInfo->getWorldTime())
-        : 0;
+    ? JavaArithmetic::longAdd(static_cast<long_t>(delay), worldInfo->getWorldTime())
+    : 0;
 
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     if (pcLegacyTickScheduler == nullptr)
         pcLegacyTickScheduler = new PcLegacyTickScheduler();
     pcLegacyTickScheduler->schedule(x, y, z, blockId, scheduledTime);
-#else
+    #else
     NextTickListEntry *entry = new NextTickListEntry(x, y, z, blockId);
     entry->setScheduledTime(scheduledTime);
 
@@ -3147,7 +3226,7 @@ void World::scheduleBlockUpdateFromLoad(int_t x, int_t y, int_t z, int_t blockId
     }
     else
         delete entry;
-#endif
+    #endif
 }
 
 std::vector<NextTickListEntry *> World::getPendingBlockUpdates(Chunk *chunk, bool remove)
@@ -3156,11 +3235,11 @@ std::vector<NextTickListEntry *> World::getPendingBlockUpdates(Chunk *chunk, boo
     if (chunk == nullptr)
         return result;
 
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     if (pcLegacyTickScheduler == nullptr)
         return result;
     return pcLegacyTickScheduler->getPendingForChunk(chunk->xPosition, chunk->zPosition, remove);
-#else
+    #else
     const int_t minX = JavaArithmetic::intShl(chunk->xPosition, 4);
     const int_t maxX = JavaArithmetic::intAdd(minX, 16);
     const int_t minZ = JavaArithmetic::intShl(chunk->zPosition, 4);
@@ -3183,7 +3262,7 @@ std::vector<NextTickListEntry *> World::getPendingBlockUpdates(Chunk *chunk, boo
     }
 
     return result;
-#endif
+    #endif
 }
 
 #if PLATFORM_BOUNDED_PATHFIND
@@ -3195,36 +3274,36 @@ static int_t s_pathfindBudgetThisTick = 0;
 
 void World::trackLoadedEntityPointer(Entity *entity)
 {
-#if PLATFORM_PC_LEGACY
+    #if PLATFORM_PC_LEGACY
     if (entity != nullptr)
         loadedEntityPointerSet.insert(entity);
-#elif PLATFORM_PS2
+    #elif PLATFORM_PS2
     if (entity != nullptr && !loadedEntityPointerIndexOverflow && !loadedEntityPointerIndex.insert(entity))
         loadedEntityPointerIndexOverflow = true;
-#else
+    #else
     (void)entity;
-#endif
+    #endif
 }
 
 void World::untrackLoadedEntityPointer(Entity *entity)
 {
-#if PLATFORM_PC_LEGACY
+    #if PLATFORM_PC_LEGACY
     if (entity != nullptr)
         loadedEntityPointerSet.erase(entity);
-#elif PLATFORM_PS2
+    #elif PLATFORM_PS2
     if (entity != nullptr && !loadedEntityPointerIndexOverflow)
         loadedEntityPointerIndex.erase(entity);
-#else
+    #else
     (void)entity;
-#endif
+    #endif
 }
 
 void World::rebuildLoadedEntityPointerSet() const
 {
-#if PLATFORM_PC_LEGACY
+    #if PLATFORM_PC_LEGACY
     loadedEntityPointerSet.clear();
     loadedEntityPointerSet.insert(loadedEntityList.begin(), loadedEntityList.end());
-#elif PLATFORM_PS2
+    #elif PLATFORM_PS2
     loadedEntityPointerIndex.clear();
     loadedEntityPointerIndexOverflow = false;
     for (Entity *entity : loadedEntityList)
@@ -3235,18 +3314,18 @@ void World::rebuildLoadedEntityPointerSet() const
             break;
         }
     }
-#endif
+    #endif
 }
 
 bool World::isLoadedEntityPointer(const Entity *entity) const
 {
     if (entity == nullptr)
         return false;
-#if PLATFORM_PC_LEGACY
+    #if PLATFORM_PC_LEGACY
     if (loadedEntityPointerSet.size() != loadedEntityList.size())
         rebuildLoadedEntityPointerSet();
     return loadedEntityPointerSet.find(entity) != loadedEntityPointerSet.end();
-#elif PLATFORM_PS2
+    #elif PLATFORM_PS2
     if (loadedEntityPointerIndexOverflow)
     {
         if (loadedEntityList.size() <= Ps2EntityPointerIndex::kMaxEntries)
@@ -3261,9 +3340,9 @@ bool World::isLoadedEntityPointer(const Entity *entity) const
             return std::find(loadedEntityList.begin(), loadedEntityList.end(), entity) != loadedEntityList.end();
     }
     return loadedEntityPointerIndex.contains(entity);
-#else
+    #else
     return std::find(loadedEntityList.begin(), loadedEntityList.end(), entity) != loadedEntityList.end();
-#endif
+    #endif
 }
 
 bool World::isLoadedTileEntityPointer(const TileEntity *tileEntity) const
@@ -3288,22 +3367,22 @@ void World::destroyEntity(Entity *entity)
 
 void World::updateEntities()
 {
-#if PLATFORM_BOUNDED_PATHFIND
+    #if PLATFORM_BOUNDED_PATHFIND
     s_pathfindBudgetThisTick = PLATFORM_PATHFIND_BUDGET_PER_TICK;
-#endif
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #endif
+    #if PLATFORM_PROFILE_RENDER_PHASES
     // This function is the whole of the client tick phase named "entities",
     // which measured 27.8ms of a 93.3ms frame for 48 loaded entities on PS2.
     // Split it so the per-entity simulation is separable from the list
     // bookkeeping, the unload drain and the tile-entity pass around it.
     long_t platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
     // Update weather effects
     for (size_t i = 0; i < weatherEffects.size(); i++)
     {
         Entity* entity = weatherEffects[i];
         entity->onUpdate();
-        
+
         if (entity->isDead)
         {
             weatherEffects.erase(weatherEffects.begin() + i);
@@ -3312,11 +3391,11 @@ void World::updateEntities()
             i--;
         }
     }
-    
-#if PLATFORM_PROFILE_RENDER_PHASES
+
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("entWeather", System::nanoTime() - platformPhaseStartNs);
     platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
     // Java: loadedEntityList.removeAll(unloadedEntityList). Keep the unload
     // list in insertion order because it is iterated immediately afterwards for
     // chunk removal, skin release and entity-removal callbacks.
@@ -3324,23 +3403,23 @@ void World::updateEntities()
     {
         for (Entity *entity : unloadedEntityList)
             untrackLoadedEntityPointer(entity);
-#if PLATFORM_PC_LEGACY
+        #if PLATFORM_PC_LEGACY
         loadedEntityList.erase(
             std::remove_if(loadedEntityList.begin(), loadedEntityList.end(),
-                [this](Entity* entity)
-                {
-                    return loadedEntityPointerSet.find(entity) == loadedEntityPointerSet.end();
-                }),
-            loadedEntityList.end());
-#else
+                           [this](Entity* entity)
+                           {
+                               return loadedEntityPointerSet.find(entity) == loadedEntityPointerSet.end();
+                           }),
+                           loadedEntityList.end());
+        #else
         loadedEntityList.erase(
             std::remove_if(loadedEntityList.begin(), loadedEntityList.end(),
-                [this](Entity* entity)
-                {
-                    return std::find(unloadedEntityList.begin(), unloadedEntityList.end(), entity) != unloadedEntityList.end();
-                }),
-            loadedEntityList.end());
-#endif
+                           [this](Entity* entity)
+                           {
+                               return std::find(unloadedEntityList.begin(), unloadedEntityList.end(), entity) != unloadedEntityList.end();
+                           }),
+                           loadedEntityList.end());
+        #endif
         entityCountsDirty = true;
     }
 
@@ -3350,7 +3429,7 @@ void World::updateEntities()
         Entity* entity = unloadedEntityList[j];
         int chunkX = entity->chunkCoordX;
         int chunkZ = entity->chunkCoordZ;
-        
+
         if (entity->addedToChunk)
         {
             Chunk *chunk = getChunkIfExists(chunkX, chunkZ);
@@ -3358,59 +3437,59 @@ void World::updateEntities()
                 chunk->removeEntity(entity);
         }
     }
-    
+
     for (size_t j = 0; j < unloadedEntityList.size(); j++)
     {
         releaseEntitySkin(unloadedEntityList[j]);
         onEntityRemoved(unloadedEntityList[j]);
         destroyEntity(unloadedEntityList[j]);
     }
-    
+
     unloadedEntityList.clear();
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("entUnload", System::nanoTime() - platformPhaseStartNs);
     platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
 
     // Update loaded entities
     for (size_t l = 0; l < loadedEntityList.size(); l++)
     {
         Entity* entity = loadedEntityList[l];
-        
+
         if (entity->ridingEntity != nullptr)
         {
             if (!entity->ridingEntity->isDead && entity->ridingEntity->riddenByEntity == entity)
             {
                 continue;
             }
-            
+
             entity->ridingEntity->riddenByEntity = nullptr;
             entity->ridingEntity = nullptr;
         }
-        
+
         if (!entity->isDead)
         {
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+            #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
             const std::uint32_t entityTickStart = platformProfileRenderPhaseBegin();
-#endif
+            #endif
             updateEntity(entity);
-#if PLATFORM_PS2 && MC_LOG_LEVEL > 2
+            #if PLATFORM_PS2 && MC_LOG_LEVEL > 2
             platformProfileEntityTick(entityTickStart, entity);
-#endif
+            #endif
         }
-        
+
         if (entity->isDead)
         {
             int chunkX = entity->chunkCoordX;
             int chunkZ = entity->chunkCoordZ;
-            
+
             if (entity->addedToChunk)
             {
                 Chunk *chunk = getChunkIfExists(chunkX, chunkZ);
                 if (chunk != nullptr)
                     chunk->removeEntity(entity);
             }
-            
+
             loadedEntityList.erase(
                 loadedEntityList.begin() + static_cast<std::vector<Entity *>::difference_type>(l));
             untrackLoadedEntityPointer(entity);
@@ -3421,25 +3500,25 @@ void World::updateEntities()
             destroyEntity(entity);
         }
     }
-    
-#if PLATFORM_PROFILE_RENDER_PHASES
+
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("entTick", System::nanoTime() - platformPhaseStartNs);
     platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
 
     // Update tile entities
     updatingTileEntities = true;
-    
+
     for (auto it = loadedTileEntityList.begin(); it != loadedTileEntityList.end();)
     {
         TileEntity* tileEntity = *it;
-        
+
         if (!tileEntity->isInvalid() && tileEntity->worldObj != nullptr &&
             blockExists(tileEntity->xCoord, tileEntity->yCoord, tileEntity->zCoord))
         {
             tileEntity->updateEntity();
         }
-        
+
         if (tileEntity->isInvalid())
         {
             notifyTileEntityRenderersRemoved(tileEntity);
@@ -3462,7 +3541,7 @@ void World::updateEntities()
             ++it;
         }
     }
-    
+
     updatingTileEntities = false;
 
     if (!tileEntitiesToRemove.empty())
@@ -3471,17 +3550,17 @@ void World::updateEntities()
         {
             loadedTileEntityList.erase(
                 std::remove(loadedTileEntityList.begin(), loadedTileEntityList.end(), tileEntity),
-                loadedTileEntityList.end());
+                                       loadedTileEntityList.end());
         }
         tileEntitiesToRemove.clear();
     }
-    
+
     if (!tileEntitiesToAdd.empty())
     {
         for (auto it = tileEntitiesToAdd.begin(); it != tileEntitiesToAdd.end();)
         {
             TileEntity* tileEntity = *it;
-            
+
             if (!tileEntity->isInvalid())
             {
                 auto findIt = std::find(loadedTileEntityList.begin(), loadedTileEntityList.end(), tileEntity);
@@ -3489,22 +3568,22 @@ void World::updateEntities()
                 {
                     loadedTileEntityList.push_back(tileEntity);
                 }
-                
+
                 const int_t chunkX = JavaArithmetic::intShr(tileEntity->xCoord, 4);
                 const int_t chunkZ = JavaArithmetic::intShr(tileEntity->zCoord, 4);
                 Chunk *chunk = getChunkIfExists(chunkX, chunkZ);
                 if (chunk != nullptr)
                     chunk->setChunkBlockTileEntity(tileEntity->xCoord & 0xf, tileEntity->yCoord, tileEntity->zCoord & 0xf, tileEntity);
-                
+
                 markBlockNeedsUpdate(tileEntity->xCoord, tileEntity->yCoord, tileEntity->zCoord);
             }
-            
+
             it = tileEntitiesToAdd.erase(it);
         }
     }
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("entTile", System::nanoTime() - platformPhaseStartNs);
-#endif
+    #endif
 }
 
 void World::addLoadedTileEntities(const std::vector<TileEntity*>& collection)
@@ -3529,7 +3608,7 @@ void World::addLoadedTileEntities(const std::vector<TileEntity*>& collection)
 
 void World::ensureEntityChunkRetention(Entity *entity)
 {
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     if (entity == nullptr || entity->isDead || entity->getChunkRetentionRadius() < 0)
         return;
 
@@ -3537,14 +3616,14 @@ void World::ensureEntityChunkRetention(Entity *entity)
     const int_t chunkZ = MathHelper::floor_double(entity->posZ / 16.0);
     if (!chunkExists(chunkX, chunkZ))
         getChunkFromChunkCoords(chunkX, chunkZ);
-#else
+    #else
     (void)entity;
-#endif
+    #endif
 }
 
 void World::prefetchEntityChunkRetention(Entity *entity)
 {
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     if (entity == nullptr || entity->isDead || entity->getChunkRetentionRadius() < 0)
         return;
 
@@ -3558,9 +3637,9 @@ void World::prefetchEntityChunkRetention(Entity *entity)
     {
         getChunkFromChunkCoords(chunkX, chunkZ);
     }
-#else
+    #else
     (void)entity;
-#endif
+    #endif
 }
 
 void World::updateEntity(Entity* entity)
@@ -3570,25 +3649,25 @@ void World::updateEntity(Entity* entity)
 
 void World::updateEntityWithOptionalForce(Entity* entity, bool flag)
 {
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     if (flag)
         ensureEntityChunkRetention(entity);
-#endif
+    #endif
     int i = MathHelper::floor_double(entity->posX);
     int j = MathHelper::floor_double(entity->posZ);
-#if PLATFORM_BOUNDED_PATHFIND
+    #if PLATFORM_BOUNDED_PATHFIND
     // Vanilla waits for a 32-block radius before ticking an entity. Bounded
     // console caches use their platform-specific margin so entities near the
     // streaming edge do not remain frozen waiting for a full 5x5 chunk area.
     const int RANGE = PLATFORM_PLAYER_UPDATE_CHUNK_RANGE_BLOCKS;
-#else
+    #else
     const int RANGE = 32;
-#endif
-    
+    #endif
+
     if (flag)
     {
         bool chunksExist;
-#if PLATFORM_CACHE_ENTITY_CHUNK_EXISTENCE
+        #if PLATFORM_CACHE_ENTITY_CHUNK_EXISTENCE
         const int_t minChunkX = JavaArithmetic::intShr(JavaArithmetic::intSub(i, RANGE), 4);
         const int_t minChunkZ = JavaArithmetic::intShr(JavaArithmetic::intSub(j, RANGE), 4);
         const int_t maxChunkX = JavaArithmetic::intShr(JavaArithmetic::intAdd(i, RANGE), 4);
@@ -3600,22 +3679,22 @@ void World::updateEntityWithOptionalForce(Entity* entity, bool flag)
                                            JavaArithmetic::intAdd(i, RANGE), WorldHeight::HEIGHT, JavaArithmetic::intAdd(j, RANGE));
             entity->cacheChunkExistence(minChunkX, minChunkZ, maxChunkX, maxChunkZ, topologyVersion, chunksExist);
         }
-#else
+        #else
         chunksExist = checkChunksExist(JavaArithmetic::intSub(i, RANGE), 0, JavaArithmetic::intSub(j, RANGE),
                                        JavaArithmetic::intAdd(i, RANGE), WorldHeight::HEIGHT, JavaArithmetic::intAdd(j, RANGE));
-#endif
+        #endif
         if (!chunksExist)
         {
             return;
         }
     }
-    
+
     entity->lastTickPosX = entity->posX;
     entity->lastTickPosY = entity->posY;
     entity->lastTickPosZ = entity->posZ;
     entity->prevRotationYaw = entity->rotationYaw;
     entity->prevRotationPitch = entity->rotationPitch;
-    
+
     if (flag && entity->addedToChunk)
     {
         if (entity->ridingEntity != nullptr)
@@ -3627,43 +3706,43 @@ void World::updateEntityWithOptionalForce(Entity* entity, bool flag)
             entity->onUpdate();
         }
     }
-    
+
     if (std::isnan(entity->posX) || std::isinf(entity->posX))
     {
         entity->posX = entity->lastTickPosX;
     }
-    
+
     if (std::isnan(entity->posY) || std::isinf(entity->posY))
     {
         entity->posY = entity->lastTickPosY;
     }
-    
+
     if (std::isnan(entity->posZ) || std::isinf(entity->posZ))
     {
         entity->posZ = entity->lastTickPosZ;
     }
-    
+
     if (std::isnan(entity->rotationPitch) || std::isinf(entity->rotationPitch))
     {
         entity->rotationPitch = entity->prevRotationPitch;
     }
-    
+
     if (std::isnan(entity->rotationYaw) || std::isinf(entity->rotationYaw))
     {
         entity->rotationYaw = entity->prevRotationYaw;
     }
-    
+
     int k = MathHelper::floor_double(entity->posX / 16.0);
     int l = MathHelper::floor_double(entity->posY / 16.0);
     int i1 = MathHelper::floor_double(entity->posZ / 16.0);
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+    #if PLATFORM_ENTITY_CHUNK_RETENTION
     if (flag && entity->getChunkRetentionRadius() >= 0)
     {
         ensureEntityChunkRetention(entity);
         prefetchEntityChunkRetention(entity);
     }
-#endif
-    
+    #endif
+
     if (!entity->addedToChunk || entity->chunkCoordX != k || entity->chunkCoordY != l || entity->chunkCoordZ != i1)
     {
         if (entity->addedToChunk)
@@ -3684,7 +3763,7 @@ void World::updateEntityWithOptionalForce(Entity* entity, bool flag)
             entity->addedToChunk = false;
         }
     }
-    
+
     if (flag && entity->addedToChunk && entity->riddenByEntity != nullptr)
     {
         if (entity->riddenByEntity->isDead || entity->riddenByEntity->ridingEntity != entity)
@@ -3702,7 +3781,7 @@ void World::updateEntityWithOptionalForce(Entity* entity, bool flag)
 bool World::checkIfAABBIsClear(AxisAlignedBB* aabb)
 {
     const auto& list = getEntitiesWithinAABBExcludingEntity(nullptr, aabb);
-    
+
     for (size_t i = 0; i < list.size(); i++)
     {
         Entity* entity = list[i];
@@ -3711,7 +3790,7 @@ bool World::checkIfAABBIsClear(AxisAlignedBB* aabb)
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -3723,7 +3802,7 @@ bool World::getIsAnyLiquid(AxisAlignedBB* aabb)
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     if (aabb->minX < 0.0)
     {
         minX--;
@@ -3736,7 +3815,7 @@ bool World::getIsAnyLiquid(AxisAlignedBB* aabb)
     {
         minZ--;
     }
-    
+
     for (int x = minX; x < maxX; x++)
     {
         for (int y = minY; y < maxY; y++)
@@ -3751,7 +3830,7 @@ bool World::getIsAnyLiquid(AxisAlignedBB* aabb)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -3763,7 +3842,7 @@ bool World::isBoundingBoxBurning(AxisAlignedBB* aabb)
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     if (checkChunksExist(minX, minY, minZ, maxX, maxY, maxZ))
     {
         for (int x = minX; x < maxX; x++)
@@ -3773,8 +3852,8 @@ bool World::isBoundingBoxBurning(AxisAlignedBB* aabb)
                 for (int z = minZ; z < maxZ; z++)
                 {
                     int blockId = getBlockId(x, y, z);
-                    if (blockId == Block::fire->blockID || 
-                        blockId == Block::lavaMoving->blockID || 
+                    if (blockId == Block::fire->blockID ||
+                        blockId == Block::lavaMoving->blockID ||
                         blockId == Block::lavaStill->blockID)
                     {
                         return true;
@@ -3783,7 +3862,7 @@ bool World::isBoundingBoxBurning(AxisAlignedBB* aabb)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -3795,15 +3874,15 @@ bool World::handleMaterialAcceleration(AxisAlignedBB* aabb, Material* material, 
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     if (!checkChunksExist(minX, minY, minZ, maxX, maxY, maxZ))
     {
         return false;
     }
-    
+
     bool flag = false;
     Vec3D* vec3d = Vec3D::createVector(0.0, 0.0, 0.0);
-    
+
     for (int x = minX; x < maxX; x++)
     {
         for (int y = minY; y < maxY; y++)
@@ -3815,7 +3894,7 @@ bool World::handleMaterialAcceleration(AxisAlignedBB* aabb, Material* material, 
                 {
                     continue;
                 }
-                
+
                 // Compare the fluid surface where it is produced, in float.
                 //
                 // Both operands of the subtraction are already float, so the
@@ -3835,7 +3914,7 @@ bool World::handleMaterialAcceleration(AxisAlignedBB* aabb, Material* material, 
             }
         }
     }
-    
+
     if (vec3d->lengthVector() > 0.0)
     {
         vec3d = vec3d->normalize();
@@ -3844,7 +3923,7 @@ bool World::handleMaterialAcceleration(AxisAlignedBB* aabb, Material* material, 
         entity->motionY += vec3d->yCoord * d;
         entity->motionZ += vec3d->zCoord * d;
     }
-    
+
     return flag;
 }
 
@@ -3856,7 +3935,7 @@ bool World::isMaterialInBB(AxisAlignedBB* aabb, Material* material)
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     for (int x = minX; x < maxX; x++)
     {
         for (int y = minY; y < maxY; y++)
@@ -3871,7 +3950,7 @@ bool World::isMaterialInBB(AxisAlignedBB* aabb, Material* material)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -3883,7 +3962,7 @@ bool World::isAABBInMaterial(AxisAlignedBB* aabb, Material* material)
     int maxY = MathHelper::floor_double(aabb->maxY + 1.0);
     int minZ = MathHelper::floor_double(aabb->minZ);
     int maxZ = MathHelper::floor_double(aabb->maxZ + 1.0);
-    
+
     for (int x = minX; x < maxX; x++)
     {
         for (int y = minY; y < maxY; y++)
@@ -3895,14 +3974,14 @@ bool World::isAABBInMaterial(AxisAlignedBB* aabb, Material* material)
                 {
                     continue;
                 }
-                
+
                 int metadata = getBlockMetadata(x, y, z);
                 double d = y + 1;
                 if (metadata < 8)
                 {
                     d = (double)(y + 1) - (double)metadata / 8.0;
                 }
-                
+
                 if (d >= aabb->minY)
                 {
                     return true;
@@ -3910,7 +3989,7 @@ bool World::isAABBInMaterial(AxisAlignedBB* aabb, Material* material)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -3930,7 +4009,7 @@ Explosion *World::newExplosion(Entity* entity, double x, double y, double z, flo
 
 float World::getBlockDensity(Vec3D* vec, AxisAlignedBB* aabb) // func_675_a
 {
-#if PLATFORM_FLOAT_EXPLOSION_MATH
+    #if PLATFORM_FLOAT_EXPLOSION_MATH
     // Rebase the sampling box around the explosion origin before narrowing.
     // Entity AABBs are only a few blocks wide, so the hot interpolation stays
     // precise even when the world coordinates themselves are large.
@@ -3958,8 +4037,8 @@ float World::getBlockDensity(Vec3D* vec, AxisAlignedBB* aabb) // func_675_a
                 const float sampleOffsetZ = densityMinZ + densityDepth * f2;
                 Vec3D *sample = Vec3D::createVector(
                     vec->xCoord + static_cast<double>(sampleOffsetX),
-                    vec->yCoord + static_cast<double>(sampleOffsetY),
-                    vec->zCoord + static_cast<double>(sampleOffsetZ));
+                                                    vec->yCoord + static_cast<double>(sampleOffsetY),
+                                                    vec->zCoord + static_cast<double>(sampleOffsetZ));
 
                 MovingObjectPosition* mopDensity = rayTraceBlocks(sample, vec);
                 if (mopDensity == nullptr)
@@ -3971,14 +4050,14 @@ float World::getBlockDensity(Vec3D* vec, AxisAlignedBB* aabb) // func_675_a
     }
 
     return static_cast<float>(visible) / static_cast<float>(total);
-#else
+    #else
     double d = 1.0 / ((aabb->maxX - aabb->minX) * 2.0 + 1.0);
     double d1 = 1.0 / ((aabb->maxY - aabb->minY) * 2.0 + 1.0);
     double d2 = 1.0 / ((aabb->maxZ - aabb->minZ) * 2.0 + 1.0);
-    
+
     int visible = 0;
     int total = 0;
-    
+
     for (float f = 0.0f; f <= 1.0f; f = (float)((double)f + d))
     {
         for (float f1 = 0.0f; f1 <= 1.0f; f1 = (float)((double)f1 + d1))
@@ -3988,7 +4067,7 @@ float World::getBlockDensity(Vec3D* vec, AxisAlignedBB* aabb) // func_675_a
                 double d3 = aabb->minX + (aabb->maxX - aabb->minX) * (double)f;
                 double d4 = aabb->minY + (aabb->maxY - aabb->minY) * (double)f1;
                 double d5 = aabb->minZ + (aabb->maxZ - aabb->minZ) * (double)f2;
-                
+
                 MovingObjectPosition* mopDensity = rayTraceBlocks(Vec3D::createVector(d3, d4, d5), vec);
                 if (mopDensity == nullptr)
                     visible++;
@@ -3997,9 +4076,9 @@ float World::getBlockDensity(Vec3D* vec, AxisAlignedBB* aabb) // func_675_a
             }
         }
     }
-    
+
     return (float)visible / (float)total;
-#endif
+    #endif
 }
 
 void World::onBlockHit(EntityPlayer* player, int x, int y, int z, int side)
@@ -4010,7 +4089,7 @@ void World::onBlockHit(EntityPlayer* player, int x, int y, int z, int side)
     if (side == 3) z++;
     if (side == 4) x--;
     if (side == 5) x++;
-    
+
     if (getBlockId(x, y, z) == Block::fire->blockID)
     {
         playAuxSFXAtEntity(player, 1004, x, y, z, 0);
@@ -4062,7 +4141,7 @@ TileEntity* World::getBlockTileEntity(int x, int y, int z)
     {
         return chunk->getChunkBlockTileEntity(x & 0xf, y, z & 0xf);
     }
-    
+
     return nullptr;
 }
 
@@ -4114,10 +4193,10 @@ void World::markTileEntityChunkModified(int_t x, int_t y, int_t z, TileEntity *t
     {
         Chunk *chunk = getChunkFromBlockCoords(x, z);
         chunk->setChunkModified();
-#if PLATFORM_SAVE_RUNTIME_CHUNK_EDITS_ON_UNLOAD
+        #if PLATFORM_SAVE_RUNTIME_CHUNK_EDITS_ON_UNLOAD
         if (!isPopulationFastPathChunk(chunk))
             chunk->markRuntimeSaveRequired();
-#endif
+        #endif
     }
 
     // Vanilla also tells every IWorldAccess here, but its
@@ -4140,7 +4219,7 @@ void World::removeBlockTileEntity(int x, int y, int z)
     if (x < -30000000 || z < -30000000 || x >= 30000000 || z >= 30000000 || y < 0 || y >= WorldHeight::HEIGHT)
         return;
     TileEntity* tileEntity = getBlockTileEntity(x, y, z);
-    
+
     if (tileEntity != nullptr)
         notifyTileEntityRenderersRemoved(tileEntity);
 
@@ -4186,7 +4265,7 @@ bool World::isBlockOpaqueCube(int x, int y, int z)
     {
         return false;
     }
-    
+
     return block->isOpaqueCube();
 }
 
@@ -4197,7 +4276,7 @@ bool World::isBlockNormalCube(int x, int y, int z)
     {
         return false;
     }
-    
+
     return block->blockMaterial->getIsTranslucent() && block->renderAsNormalBlock();
 }
 
@@ -4251,7 +4330,7 @@ bool World::updatingLighting()
         // it finish this frame so the section is dirtied once, with its final
         // light, instead of once per frame of propagation.
         const bool interactiveBurst = PLATFORM_LIGHTING_INTERACTIVE_BURST > 0 &&
-            (int)lightingToUpdate.size() <= PLATFORM_LIGHTING_INTERACTIVE_QUEUE_MAX;
+        (int)lightingToUpdate.size() <= PLATFORM_LIGHTING_INTERACTIVE_QUEUE_MAX;
         if (interactiveBurst && count < PLATFORM_LIGHTING_INTERACTIVE_BURST)
             count = PLATFORM_LIGHTING_INTERACTIVE_BURST;
 
@@ -4261,14 +4340,14 @@ bool World::updatingLighting()
         // budget is enabled, so the profiles that leave it at 0 keep the
         // original loop.
         const uint64_t budgetStartUs = PLATFORM_LIGHTING_BUDGET_US > 0
-            ? PlatformCompat::getMonotonicMicros()
-            : 0;
+        ? PlatformCompat::getMonotonicMicros()
+        : 0;
         // Clamped to the shared streaming allowance of this frame; the
         // interactive burst below ignores it the same way it ignores the
         // per-call ceiling.
         const uint64_t budgetUs = PLATFORM_LIGHTING_BUDGET_US > 0
-            ? (uint64_t)PlatformStreamingFrameBudget::clampUs((long_t)PLATFORM_LIGHTING_BUDGET_US)
-            : 0;
+        ? (uint64_t)PlatformStreamingFrameBudget::clampUs((long_t)PLATFORM_LIGHTING_BUDGET_US)
+        : 0;
         PlatformStreamingFrameBudgetScope frameBudgetScope;
 
         // One render mark per touched section for the whole drain, issued when
@@ -4276,12 +4355,28 @@ bool World::updatingLighting()
         struct DirtyBatchScope
         {
             World *world;
-            explicit DirtyBatchScope(World *w) : world(w) { world->lightingDirtyRegions.begin(); }
+            uint64_t floodfillStartUs = 0;
+            bool hadSkyLight = false;
+            explicit DirtyBatchScope(World *w) : world(w)
+            {
+                world->lightingDirtyRegions.begin();
+                floodfillStartUs = PlatformCompat::getMonotonicMicros();
+            }
             ~DirtyBatchScope()
             {
                 world->markingFromLighting = true;
                 world->lightingDirtyRegions.end(world);
                 world->markingFromLighting = false;
+
+                if (hadSkyLight)
+                {
+                    const uint64_t nowUs = PlatformCompat::getMonotonicMicros();
+                    const double elapsedMs = (nowUs > floodfillStartUs) ? (double)(nowUs - floodfillStartUs) / 1000.0 : 0.0;
+                    if (elapsedMs >= 0.1)
+                    {
+                        printf("[PERF] Skylight floodfill time: %.2f ms\n", elapsedMs);
+                    }
+                }
             }
             DirtyBatchScope(const DirtyBatchScope &) = delete;
             DirtyBatchScope &operator=(const DirtyBatchScope &) = delete;
@@ -4297,6 +4392,10 @@ bool World::updatingLighting()
 
             MetadataChunkBlock metadataChunkBlock = lightingToUpdate.back();
             lightingToUpdate.pop_back();
+            if (metadataChunkBlock.skyBlock == EnumSkyBlock::Sky)
+            {
+                dirtyBatchScope.hadSkyLight = true;
+            }
             // Cleared before the job runs, so propagation inside it can queue
             // this cell again exactly as it could when the queue was scanned.
             if (isSingleCellLightingJob(metadataChunkBlock))
@@ -4387,13 +4486,13 @@ void World::updateLightByType(EnumSkyBlock *type, int_t x, int_t y, int_t z)
     if (type == nullptr)
         return;
 
-#if PLATFORM_CONSOLE_LOW
+    #if PLATFORM_CONSOLE_LOW
     // The low-memory console backend deliberately keeps OptiCraft's deferred and
     // mergeable lighting scheduler.  It preserves the result while avoiding the
     // synchronous 32K-entry flood fill on the gameplay thread.
     scheduleLightingUpdate(type, x, y, z, x, y, z);
     return;
-#else
+    #else
     if (!doChunksNearChunkExist(x, y, z, 17))
         return;
 
@@ -4406,8 +4505,8 @@ void World::updateLightByType(EnumSkyBlock *type, int_t x, int_t y, int_t z)
         opacity = 1;
 
     const int_t newLight = type == EnumSkyBlock::Sky
-        ? computeSkyLightValue(oldLight, x, y, z, blockId, opacity)
-        : computeBlockLightValue(oldLight, x, y, z, blockId, opacity);
+    ? computeSkyLightValue(oldLight, x, y, z, blockId, opacity)
+    : computeBlockLightValue(oldLight, x, y, z, blockId, opacity);
 
     if (newLight > oldLight)
     {
@@ -4454,9 +4553,9 @@ void World::updateLightByType(EnumSkyBlock *type, int_t x, int_t y, int_t z)
                 if (neighborLight == propagated && writeIndex < static_cast<int_t>(lightUpdateBlockList.size()))
                 {
                     lightUpdateBlockList[writeIndex++] = (nx - x + 32)
-                        | ((ny - y + 32) << 6)
-                        | ((nz - z + 32) << 12)
-                        | (propagated << 18);
+                    | ((ny - y + 32) << 6)
+                    | ((nz - z + 32) << 12)
+                    | (propagated << 18);
                 }
             }
         }
@@ -4476,8 +4575,8 @@ void World::updateLightByType(EnumSkyBlock *type, int_t x, int_t y, int_t z)
             opacity = 1;
 
         const int_t target = type == EnumSkyBlock::Sky
-            ? computeSkyLightValue(current, px, py, pz, blockId, opacity)
-            : computeBlockLightValue(current, px, py, pz, blockId, opacity);
+        ? computeSkyLightValue(current, px, py, pz, blockId, opacity)
+        : computeBlockLightValue(current, px, py, pz, blockId, opacity);
         if (target == current)
             continue;
 
@@ -4503,12 +4602,12 @@ void World::updateLightByType(EnumSkyBlock *type, int_t x, int_t y, int_t z)
             if (getSavedLightValue(type, nx, ny, nz) < target)
             {
                 lightUpdateBlockList[writeIndex++] = (nx - x + 32)
-                    | ((ny - y + 32) << 6)
-                    | ((nz - z + 32) << 12);
+                | ((ny - y + 32) << 6)
+                | ((nz - z + 32) << 12);
             }
         }
     }
-#endif
+    #endif
 }
 
 void World::scheduleLightingUpdate(EnumSkyBlock* enumSkyBlock, int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
@@ -4518,16 +4617,16 @@ void World::scheduleLightingUpdate(EnumSkyBlock* enumSkyBlock, int minX, int min
 
 void World::scheduleLightingUpdate_do(EnumSkyBlock* enumSkyBlock, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, bool flag)
 {
-#if PLATFORM_CONSOLE_LOW
-#if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
+    #if PLATFORM_CONSOLE_LOW
+    #if PLATFORM_FORCE_FULLBRIGHT_TERRAIN
     // Terrain is rendered fullbright, so the recursive sky/block light flood-fill
     // is pure wasted EE work and is the main multi-second hitch when a new chunk
     // is generated. Skip queuing light updates entirely under this profile.
     (void)enumSkyBlock; (void)minX; (void)minY; (void)minZ;
     (void)maxX; (void)maxY; (void)maxZ; (void)flag;
     return;
-#endif
-#endif
+    #endif
+    #endif
     if (worldProvider->hasNoSky && enumSkyBlock == EnumSkyBlock::Sky)
     {
         return;
@@ -4535,83 +4634,83 @@ void World::scheduleLightingUpdate_do(EnumSkyBlock* enumSkyBlock, int minX, int 
 
     if (batchPopulationLightingUpdate(enumSkyBlock, minX, minY, minZ, maxX, maxY, maxZ))
         return;
-    
+
     lightingUpdatesScheduled++;
-    
+
     struct CounterGuard
     {
         int_t &counter;
         ~CounterGuard() { --counter; }
     } counterGuard{lightingUpdatesScheduled};
 
-        if (lightingUpdatesScheduled == 50)
-        {
-            return;
-        }
-        
-        int midX = (maxX + minX) / 2;
-        int midZ = (maxZ + minZ) / 2;
-        
-        if (!blockExists(midX, 64, midZ))
-        {
-            return;
-        }
-        
-        if (getChunkFromBlockCoords(midX, midZ)->isEmptyChunk())
-        {
-            return;
-        }
-        
-        const int size = (int)lightingToUpdate.size();
+    if (lightingUpdatesScheduled == 50)
+    {
+        return;
+    }
 
-        // A single cell is the common case (neighbour propagation) and is
-        // answered by the cell set below instead of the tail scan; the scan
-        // stays for box jobs, which the set cannot represent.
-        const bool singleCell = minX == maxX && minY == maxY && minZ == maxZ;
-        const ulong_t cellKey = singleCell
-            ? LightingQueueCellSet::key(enumSkyBlock, minX, minY, minZ)
-            : 0;
+    int midX = (maxX + minX) / 2;
+    int midZ = (maxZ + minZ) / 2;
 
-        if (flag && !singleCell)
+    if (!blockExists(midX, 64, midZ))
+    {
+        return;
+    }
+
+    if (getChunkFromBlockCoords(midX, midZ)->isEmptyChunk())
+    {
+        return;
+    }
+
+    const int size = (int)lightingToUpdate.size();
+
+    // A single cell is the common case (neighbour propagation) and is
+    // answered by the cell set below instead of the tail scan; the scan
+    // stays for box jobs, which the set cannot represent.
+    const bool singleCell = minX == maxX && minY == maxY && minZ == maxZ;
+    const ulong_t cellKey = singleCell
+    ? LightingQueueCellSet::key(enumSkyBlock, minX, minY, minZ)
+    : 0;
+
+    if (flag && !singleCell)
+    {
+        int checkCount = PLATFORM_LIGHTING_MERGE_SCAN;
+        // PS2 probes a much wider recent tail than vanilla. Recursive light
+        // propagation tends to schedule overlapping neighbours close together,
+        // so this catches the duplicates without an O(queue) scan per block.
+        if (checkCount > size)
+            checkCount = size;
+
+        for (int i = 0; i < checkCount; i++)
         {
-            int checkCount = PLATFORM_LIGHTING_MERGE_SCAN;
-            // PS2 probes a much wider recent tail than vanilla. Recursive light
-            // propagation tends to schedule overlapping neighbours close together,
-            // so this catches the duplicates without an O(queue) scan per block.
-            if (checkCount > size)
-                checkCount = size;
-            
-            for (int i = 0; i < checkCount; i++)
+            MetadataChunkBlock& metadataChunkBlock = lightingToUpdate[lightingToUpdate.size() - i - 1];
+            if (metadataChunkBlock.skyBlock == enumSkyBlock &&
+                metadataChunkBlock.tryMerge(minX, minY, minZ, maxX, maxY, maxZ))
             {
-                MetadataChunkBlock& metadataChunkBlock = lightingToUpdate[lightingToUpdate.size() - i - 1];
-                if (metadataChunkBlock.skyBlock == enumSkyBlock &&
-                    metadataChunkBlock.tryMerge(minX, minY, minZ, maxX, maxY, maxZ))
-                {
-                    return;
-                }
+                return;
             }
         }
-        
-        if (size >= PLATFORM_LIGHTING_QUEUE_HARD_CAP)
-        {
-            // A saturated PS2 queue is already several seconds of propagation
-            // work. Do not spend the last heap on more stale jobs; nearby changes
-            // will be scheduled again as the backlog drains.
-            return;
-        }
-        // Inserted only once every early return above is behind us, so the set
-        // never claims a cell the queue does not hold.
-        if (singleCell && !lightingQueuedCells.insert(cellKey))
-            return;
-        lightingToUpdate.emplace_back(enumSkyBlock, minX, minY, minZ, maxX, maxY, maxZ);
+    }
 
-        const int MAX_UPDATES = 1000000;
-        if (lightingToUpdate.size() > MAX_UPDATES)
-        {
-            // Logging here would be too noisy; clearing the queue matches the original abort behavior.
-            lightingToUpdate.clear();
-            lightingQueuedCells.clear();
-        }
+    if (size >= PLATFORM_LIGHTING_QUEUE_HARD_CAP)
+    {
+        // A saturated PS2 queue is already several seconds of propagation
+        // work. Do not spend the last heap on more stale jobs; nearby changes
+        // will be scheduled again as the backlog drains.
+        return;
+    }
+    // Inserted only once every early return above is behind us, so the set
+    // never claims a cell the queue does not hold.
+    if (singleCell && !lightingQueuedCells.insert(cellKey))
+        return;
+    lightingToUpdate.emplace_back(enumSkyBlock, minX, minY, minZ, maxX, maxY, maxZ);
+
+    const int MAX_UPDATES = 1000000;
+    if (lightingToUpdate.size() > MAX_UPDATES)
+    {
+        // Logging here would be too noisy; clearing the queue matches the original abort behavior.
+        lightingToUpdate.clear();
+        lightingQueuedCells.clear();
+    }
 }
 
 void World::calculateInitialSkylight()
@@ -4648,13 +4747,13 @@ void World::tick()
     if (worldProvider != nullptr && worldProvider->worldChunkMgr != nullptr)
         worldProvider->worldChunkMgr->cleanupCache();
 
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     long_t platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
     updateWeather();
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("worldWeather", System::nanoTime() - platformPhaseStartNs);
-#endif
+    #endif
 
     if (isAllPlayersFullyAsleep())
     {
@@ -4665,27 +4764,27 @@ void World::tick()
         wakeUpAllPlayers();
     }
 
-#if !PLATFORM_SKIP_MOB_SPAWNING
+    #if !PLATFORM_SKIP_MOB_SPAWNING
     if (naturalMobSpawningEnabled)
     {
-#if PLATFORM_PROFILE_RENDER_PHASES
+        #if PLATFORM_PROFILE_RENDER_PHASES
         platformPhaseStartNs = System::nanoTime();
-#endif
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+        #endif
+        #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
         const long_t mobSpawnStartNs = System::nanoTime();
-#endif
+        #endif
         // 1.2.5 attempts hostile spawns every tick but passive/animal spawning only
         // every 400 world ticks. The Beta path called peaceful spawning every tick.
         const bool spawnPeacefulThisTick = spawnPeacefulMobs && (worldInfo->getWorldTime() % 400LL == 0LL);
         SpawnerAnimals::performSpawning(this, spawnHostileMobs, spawnPeacefulThisTick);
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+        #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
         platformProfileMobSpawn(System::nanoTime() - mobSpawnStartNs);
-#endif
-#if PLATFORM_PROFILE_RENDER_PHASES
+        #endif
+        #if PLATFORM_PROFILE_RENDER_PHASES
         platformProfileTickPhase("mobSpawn", System::nanoTime() - platformPhaseStartNs);
-#endif
+        #endif
     }
-#endif
+    #endif
 
     chunkProvider->unload100OldestChunks();
 
@@ -4698,45 +4797,45 @@ void World::tick()
     }
 
     const long_t time = JavaArithmetic::longAdd(worldInfo->getWorldTime(), 1LL);
-#if !PLATFORM_DISABLE_RUNTIME_AUTOSAVE
+    #if !PLATFORM_DISABLE_RUNTIME_AUTOSAVE
     // autosavePeriod is PLATFORM_AUTOSAVE_PERIOD_TICKS. Keep the platform I/O
     // policy while preserving the vanilla point in the world-tick sequence.
     if (time % (long)autosavePeriod == 0LL)
     {
-#if PLATFORM_RUNTIME_AUTOSAVE_LEVEL_DATA
+        #if PLATFORM_RUNTIME_AUTOSAVE_LEVEL_DATA
         saveWorld(false, nullptr);
-#else
+        #else
         chunkProvider->saveChunks(false, nullptr);
-#endif
+        #endif
     }
-#else
+    #else
     (void)autosavePeriod;
-#endif
+    #endif
 
     worldInfo->setWorldTime(time);
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformPhaseStartNs = System::nanoTime();
-#endif
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #endif
+    #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     platformProfileTickQueue((long long)(pcLegacyTickScheduler != nullptr ? pcLegacyTickScheduler->size() : 0));
-#else
+    #else
     platformProfileTickQueue((long long)scheduledTickTreeSet.size());
-#endif
+    #endif
     const long_t tickUpdatesStartNs = System::nanoTime();
-#endif
+    #endif
     TickUpdates(false);
-#if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
+    #if PLATFORM_PROFILE_STREAMING && MC_LOG_LEVEL >= 2
     platformProfileTickUpdates(System::nanoTime() - tickUpdatesStartNs);
-#endif
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #endif
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("blockUpdates", System::nanoTime() - platformPhaseStartNs);
     platformPhaseStartNs = System::nanoTime();
-#endif
+    #endif
     updateBlocksAndPlayCaveSounds();
-#if PLATFORM_PROFILE_RENDER_PHASES
+    #if PLATFORM_PROFILE_RENDER_PHASES
     platformProfileTickPhase("randomBlocks", System::nanoTime() - platformPhaseStartNs);
-#endif
+    #endif
 
     // Vanilla 1.2.5 updates villages after scheduled/random block ticks.
     if (villageCollectionObj != nullptr && !multiplayerWorld)
@@ -4766,12 +4865,12 @@ void World::updateWeather()
     {
         return;
     }
-    
+
     if (field_27172_i > 0)
     {
         --field_27172_i;
     }
-    
+
     int thunderTimeValue = worldInfo->getThunderTime();
     if (thunderTimeValue <= 0)
     {
@@ -4793,7 +4892,7 @@ void World::updateWeather()
             worldInfo->setThundering(!worldInfo->getThundering());
         }
     }
-    
+
     int rainTime = worldInfo->getRainTime();
     if (rainTime <= 0)
     {
@@ -4815,7 +4914,7 @@ void World::updateWeather()
             worldInfo->setRaining(!worldInfo->getRaining());
         }
     }
-    
+
     prevRainingStrength = rainingStrength;
     if (worldInfo->getRaining())
     {
@@ -4825,7 +4924,7 @@ void World::updateWeather()
     {
         rainingStrength = (float)((double)rainingStrength - 0.01);
     }
-    
+
     if (rainingStrength < 0.0f)
     {
         rainingStrength = 0.0f;
@@ -4834,7 +4933,7 @@ void World::updateWeather()
     {
         rainingStrength = 1.0f;
     }
-    
+
     prevThunderingStrength = thunderingStrength;
     if (worldInfo->getThundering())
     {
@@ -4844,7 +4943,7 @@ void World::updateWeather()
     {
         thunderingStrength = (float)((double)thunderingStrength - 0.01);
     }
-    
+
     if (thunderingStrength < 0.0f)
     {
         thunderingStrength = 0.0f;
@@ -4872,7 +4971,7 @@ void World::func_48461_r()
 {
     const int_t range = PLATFORM_RANDOM_TICK_CHUNK_RADIUS;
 
-#if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
+    #if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
     bool rebuildChunkSelection = !positionsToUpdateCacheValid;
     std::size_t playerChunkIndex = 0;
     if (!rebuildChunkSelection)
@@ -4920,7 +5019,7 @@ void World::func_48461_r()
         positionsToUpdateOrder.swap(rebuiltOrder);
         positionsToUpdateCacheValid = true;
     }
-#else
+    #else
     positionsToUpdate.clear();
     for (EntityPlayer *player : playerEntities)
     {
@@ -4932,7 +5031,7 @@ void World::func_48461_r()
             for (int_t dz = -range; dz <= range; ++dz)
                 positionsToUpdate.add(ChunkCoordIntPair(JavaArithmetic::intAdd(chunkX, dx), JavaArithmetic::intAdd(chunkZ, dz)));
     }
-#endif
+    #endif
 
     if (soundCounter > 0)
         --soundCounter;
@@ -4995,26 +5094,26 @@ void World::updateBlocksAndPlayCaveSounds()
 {
     func_48461_r();
 
-#if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
+    #if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
     const size_t totalChunks = positionsToUpdateOrder.size();
-#else
+    #else
     static std::vector<std::uint64_t> s_tickOrder;
     s_tickOrder.clear();
     for (const ChunkCoordIntPair &pair : positionsToUpdate.valuesInIterationOrder())
         s_tickOrder.push_back(packChunkCoordKey(pair.chunkXPos, pair.chunkZPos));
 
     const size_t totalChunks = s_tickOrder.size();
-#endif
+    #endif
     if (totalChunks == 0)
         return;
 
     // How many of them this tick. Full desktop visits all of them; low-CPU
     // profiles can take a rotating slice so the phase cost is spread out.
     size_t visitCount = totalChunks;
-#if PLATFORM_RANDOM_TICK_CHUNKS_PER_TICK > 0
+    #if PLATFORM_RANDOM_TICK_CHUNKS_PER_TICK > 0
     if (totalChunks > (size_t)PLATFORM_RANDOM_TICK_CHUNKS_PER_TICK)
         visitCount = (size_t)PLATFORM_RANDOM_TICK_CHUNKS_PER_TICK;
-#endif
+    #endif
 
     static size_t s_tickCursor = 0;
     if (s_tickCursor >= totalChunks)
@@ -5037,7 +5136,7 @@ void World::updateBlocksAndPlayCaveSounds()
     // nothing changes.
     const size_t randomTickScale = (totalChunks + visitCount - 1) / visitCount;
 
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+    #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
     // Per-branch attribution. slowTick can only ever name the whole phase, so a
     // 180ms "randomBlocks" tick gave no way to tell the cave-sound probe from
     // the snow/ice branch from the block updateTicks. Each accumulator is this
@@ -5052,23 +5151,23 @@ void World::updateBlocksAndPlayCaveSounds()
     static long long s_profSnowMaxNs = 0;
     static long long s_profTicksMaxNs = 0;
     static int s_profTicksSeen = 0;
-#endif
+    #endif
 
     for (size_t visited = 0; visited < visitCount; visited++)
     {
         const size_t tickIndex = (s_tickCursor + visited) % totalChunks;
-#if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
+        #if PLATFORM_CACHE_RANDOM_TICK_CHUNKS
         const ChunkCoordIntPair &pair = positionsToUpdateOrder[tickIndex];
         const int_t pairChunkX = pair.chunkXPos;
         const int_t pairChunkZ = pair.chunkZPos;
-#else
+        #else
         const std::uint64_t chunkKey = s_tickOrder[tickIndex];
         const int_t pairChunkX = unpackChunkCoordX(chunkKey);
         const int_t pairChunkZ = unpackChunkCoordZ(chunkKey);
-#endif
+        #endif
         int chunkX = JavaArithmetic::intMul(pairChunkX, 16);
         int chunkZ = JavaArithmetic::intMul(pairChunkZ, 16);
-#if PLATFORM_BOUNDED_WORLD
+        #if PLATFORM_BOUNDED_WORLD
         // These random ticks (cave sounds, snow, lightning) are cosmetic. Calling
         // getChunkFromChunkCoords() on a missing chunk GENERATES it, so this scan
         // force-generates the whole area every tick -- the multi-second worldTick
@@ -5077,7 +5176,7 @@ void World::updateBlocksAndPlayCaveSounds()
         // generation (spread one section per frame).
         if (!chunkProvider->chunkExists(pairChunkX, pairChunkZ))
             continue;
-#endif
+        #endif
         Chunk* chunk = getChunkFromChunkCoords(pairChunkX, pairChunkZ);
         func_48458_a(chunkX, chunkZ, chunk);
 
@@ -5096,12 +5195,12 @@ void World::updateBlocksAndPlayCaveSounds()
                 field_27172_i = 2;
             }
         }
-        
+
         if (rand.nextInt(16) == 0)
         {
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+            #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
             profMark = System::nanoTime();
-#endif
+            #endif
             updateLCG = JavaArithmetic::intFromBits(static_cast<uint_t>(updateLCG) * 3u + static_cast<uint_t>(UPDATE_LCG_INCREMENT));
             int randValue = JavaArithmetic::intShr(updateLCG, 2);
             int snowX = randValue & 0xf;
@@ -5116,14 +5215,14 @@ void World::updateBlocksAndPlayCaveSounds()
 
             if (isRaining() && canSnowAt(worldX, snowY, worldZ))
                 setBlockWithNotify(worldX, snowY, worldZ, Block::snow->blockID);
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+            #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
             profSnowNs += System::nanoTime() - profMark;
-#endif
+            #endif
         }
 
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+        #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
         profMark = System::nanoTime();
-#endif
+        #endif
         ExtendedBlockStorage **storage = chunk->getBlockStorageArray();
         auto tickRandomBlock = [&](ExtendedBlockStorage *section)
         {
@@ -5141,15 +5240,15 @@ void World::updateBlocksAndPlayCaveSounds()
                 if (block != nullptr && Block::tickOnLoad[tickBlockId])
                 {
                     block->updateTick(this,
-                        JavaArithmetic::intAdd(tickX, chunkX),
-                        JavaArithmetic::intAdd(tickY, section->getYLocation()),
-                        JavaArithmetic::intAdd(tickZ, chunkZ),
-                        rand);
+                                      JavaArithmetic::intAdd(tickX, chunkX),
+                                      JavaArithmetic::intAdd(tickY, section->getYLocation()),
+                                      JavaArithmetic::intAdd(tickZ, chunkZ),
+                                      rand);
                 }
             }
         };
 
-#if PLATFORM_RANDOM_BLOCK_TICKS_PER_CHUNK > 0
+        #if PLATFORM_RANDOM_BLOCK_TICKS_PER_CHUNK > 0
         ExtendedBlockStorage *tickableSections[Chunk::SECTION_COUNT];
         int_t tickableSectionCount = 0;
         for (int_t sectionIndex = 0; sectionIndex < Chunk::SECTION_COUNT; ++sectionIndex)
@@ -5170,7 +5269,7 @@ void World::updateBlocksAndPlayCaveSounds()
                 tickRandomBlock(tickableSections[(sectionStart + sectionOffset) % tickableSectionCount]);
             }
         }
-#else
+        #else
         for (int_t sectionIndex = 0; sectionIndex < Chunk::SECTION_COUNT; ++sectionIndex)
         {
             ExtendedBlockStorage *section = storage[sectionIndex];
@@ -5187,15 +5286,15 @@ void World::updateBlocksAndPlayCaveSounds()
                 tickRandomBlock(section);
             }
         }
-#endif
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+        #endif
+        #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
         profTicksNs += System::nanoTime() - profMark;
-#endif
+        #endif
     }
 
     s_tickCursor = (s_tickCursor + visitCount) % totalChunks;
 
-#if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
+    #if PLATFORM_RANDOM_TICK_PROFILE_INTERVAL > 0
     if (profSoundNs > s_profSoundMaxNs) s_profSoundMaxNs = profSoundNs;
     if (profSnowNs  > s_profSnowMaxNs)  s_profSnowMaxNs  = profSnowNs;
     if (profTicksNs > s_profTicksMaxNs) s_profTicksMaxNs = profTicksNs;
@@ -5203,29 +5302,29 @@ void World::updateBlocksAndPlayCaveSounds()
     if (++s_profTicksSeen >= PLATFORM_RANDOM_TICK_PROFILE_INTERVAL)
     {
         MC_LOG_DEBUG("world", "randomBlocks worst tick over %d: sound=%.1fms snow=%.1fms ticks=%.1fms"
-               " | chunks=%d/%d\n",
-               (int)PLATFORM_RANDOM_TICK_PROFILE_INTERVAL,
-               (double)s_profSoundMaxNs / 1000000.0,
-               (double)s_profSnowMaxNs  / 1000000.0,
-               (double)s_profTicksMaxNs / 1000000.0,
-               (int)visitCount, (int)totalChunks);
+        " | chunks=%d/%d\n",
+        (int)PLATFORM_RANDOM_TICK_PROFILE_INTERVAL,
+                     (double)s_profSoundMaxNs / 1000000.0,
+                     (double)s_profSnowMaxNs  / 1000000.0,
+                     (double)s_profTicksMaxNs / 1000000.0,
+                     (int)visitCount, (int)totalChunks);
         s_profSoundMaxNs = s_profSnowMaxNs = s_profTicksMaxNs = 0;
         s_profTicksSeen = 0;
     }
-#endif
+    #endif
 }
 
 bool World::TickUpdates(bool flag)
 {
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     int size = pcLegacyTickScheduler != nullptr ? static_cast<int>(pcLegacyTickScheduler->size()) : 0;
-#else
+    #else
     int size = scheduledTickTreeSet.size();
     if (size != scheduledTickSet.size())
     {
         throw std::runtime_error("TickNextTick list out of synch");
     }
-#endif
+    #endif
 
     if (size > 1000)
     {
@@ -5234,11 +5333,11 @@ bool World::TickUpdates(bool flag)
 
     for (int j = 0; j < size; j++)
     {
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+        #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
         NextTickListEntry *entry = pcLegacyTickScheduler->popNext(worldInfo->getWorldTime(), flag);
         if (entry == nullptr)
             break;
-#else
+        #else
         auto it = scheduledTickTreeSet.begin();
         NextTickListEntry* entry = *it;
 
@@ -5250,11 +5349,11 @@ bool World::TickUpdates(bool flag)
         scheduledTickTreeSet.erase(it);
         scheduledTickSet.erase(entry);
         scheduledTickOrder.remove(entry);
-#endif
+        #endif
 
         const int RANGE = 8;
         if (!checkChunksExist(JavaArithmetic::intSub(entry->xCoord, RANGE),
-                              JavaArithmetic::intSub(entry->yCoord, RANGE),
+            JavaArithmetic::intSub(entry->yCoord, RANGE),
                               JavaArithmetic::intSub(entry->zCoord, RANGE),
                               JavaArithmetic::intAdd(entry->xCoord, RANGE),
                               JavaArithmetic::intAdd(entry->yCoord, RANGE),
@@ -5272,11 +5371,11 @@ bool World::TickUpdates(bool flag)
         delete entry;
     }
 
-#if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
+    #if PLATFORM_PC_LEGACY && PC_LEGACY_TICK_SCHEDULER
     return pcLegacyTickScheduler != nullptr && !pcLegacyTickScheduler->empty();
-#else
+    #else
     return scheduledTickTreeSet.size() != 0;
-#endif
+    #endif
 }
 
 bool World::tickUpdates(bool flag)
@@ -5300,7 +5399,7 @@ void World::dropOldChunks()
 
 void World::randomDisplayUpdates(int x, int y, int z)
 {
-#if PLATFORM_SKIP_WORLD_PARTICLES
+    #if PLATFORM_SKIP_WORLD_PARTICLES
     // The only thing randomDisplayTick produces is particles — torch flames,
     // lava drips, smoke, portal sparkles. With particles skipped this loop runs
     // 1000 iterations of 6 RNG calls plus a getBlockId chunk lookup and then
@@ -5309,15 +5408,15 @@ void World::randomDisplayUpdates(int x, int y, int z)
     // The particles knob was gating the spawn, not the search.
     (void)x; (void)y; (void)z;
     return;
-#else
+    #else
     const int RANGE = 16;
-#if PLATFORM_REUSE_RANDOM_DISPLAY_RNG
+    #if PLATFORM_REUSE_RANDOM_DISPLAY_RNG
     Random &random = randomDisplayRandom;
-#else
+    #else
     Random random;
-#endif
+    #endif
 
-#if PLATFORM_CACHE_RANDOM_DISPLAY_CHUNKS
+    #if PLATFORM_CACHE_RANDOM_DISPLAY_CHUNKS
     // nextIntOffset(..., 16) stays within 15 blocks of the player, so all
     // 1000 probes fit inside at most a 3x3 chunk window. Keep the vanilla RNG
     // draws and particle density, but resolve each touched chunk only once.
@@ -5325,14 +5424,14 @@ void World::randomDisplayUpdates(int x, int y, int z)
     const int_t centerChunkZ = JavaArithmetic::intShr(z, 4);
     Chunk *nearbyChunks[3][3] = {};
     bool nearbyChunkCached[3][3] = {};
-#endif
+    #endif
 
     for (int l = 0; l < PLATFORM_RANDOM_DISPLAY_PROBES; l++)
     {
         int randX = rand.nextIntOffset(x, RANGE);
         int randY = rand.nextIntOffset(y, RANGE);
         int randZ = rand.nextIntOffset(z, RANGE);
-#if PLATFORM_CACHE_RANDOM_DISPLAY_CHUNKS
+        #if PLATFORM_CACHE_RANDOM_DISPLAY_CHUNKS
         int blockId = 0;
         if (randX >= -30000000 && randZ >= -30000000 && randX < 30000000 && randZ < 30000000 &&
             randY >= 0 && randY < WorldHeight::HEIGHT)
@@ -5357,9 +5456,9 @@ void World::randomDisplayUpdates(int x, int y, int z)
                 blockId = getBlockId(randX, randY, randZ);
             }
         }
-#else
+        #else
         int blockId = getBlockId(randX, randY, randZ);
-#endif
+        #endif
 
         if (blockId == 0 && rand.nextInt(8) > randY && worldProvider->getWorldHasNoSky())
         {
@@ -5367,28 +5466,28 @@ void World::randomDisplayUpdates(int x, int y, int z)
             const float_t particleY = rand.nextFloat();
             const float_t particleZ = rand.nextFloat();
             spawnParticle("depthsuspend",
-                static_cast<double>(static_cast<float_t>(randX) + particleX),
-                static_cast<double>(static_cast<float_t>(randY) + particleY),
-                static_cast<double>(static_cast<float_t>(randZ) + particleZ),
-                0.0, 0.0, 0.0);
+                          static_cast<double>(static_cast<float_t>(randX) + particleX),
+                          static_cast<double>(static_cast<float_t>(randY) + particleY),
+                          static_cast<double>(static_cast<float_t>(randZ) + particleZ),
+                          0.0, 0.0, 0.0);
         }
         else if (blockId > 0)
         {
             Block::blocksList[blockId]->randomDisplayTick(this, randX, randY, randZ, random);
         }
     }
-#endif
+    #endif
 }
 
 std::vector<Entity*> &World::getEntitiesWithinAABBExcludingEntity(Entity* entity, AxisAlignedBB* aabb)
 {
     entitiesWithinAABBExcludingEntity.clear();
-    
+
     int minChunkX = MathHelper::floor_double((aabb->minX - 2.0) / 16.0);
     int maxChunkX = MathHelper::floor_double((aabb->maxX + 2.0) / 16.0);
     int minChunkZ = MathHelper::floor_double((aabb->minZ - 2.0) / 16.0);
     int maxChunkZ = MathHelper::floor_double((aabb->maxZ + 2.0) / 16.0);
-    
+
     for (int cx = minChunkX; cx <= maxChunkX; cx++)
     {
         for (int cz = minChunkZ; cz <= maxChunkZ; cz++)
@@ -5398,7 +5497,7 @@ std::vector<Entity*> &World::getEntitiesWithinAABBExcludingEntity(Entity* entity
                 chunk->getEntitiesWithinAABBForEntity(entity, aabb, entitiesWithinAABBExcludingEntity);
         }
     }
-    
+
     return entitiesWithinAABBExcludingEntity;
 }
 
@@ -5449,12 +5548,12 @@ Entity *World::findNearestEntityWithinAABB(const std::type_info &classType, Axis
 
 Entity *World::getEntityByID(int_t entityId)
 {
-	for (Entity *entity : loadedEntityList)
-	{
-		if (entity != nullptr && entity->entityId == entityId)
-			return entity;
-	}
-	return nullptr;
+    for (Entity *entity : loadedEntityList)
+    {
+        if (entity != nullptr && entity->entityId == entityId)
+            return entity;
+    }
+    return nullptr;
 }
 
 std::vector<Entity*> &World::getLoadedEntityList()
@@ -5464,34 +5563,34 @@ std::vector<Entity*> &World::getLoadedEntityList()
 
 int_t World::countEntities(EnumCreatureTypeTag tag)
 {
-	// Size alone is not a valid cache key: one mob can disappear while an
-	// animal is added in the same tick, leaving the vector size unchanged but
-	// the creature categories different. Explicitly invalidate on membership
-	// changes so the Wii keeps the cheap cached counts without stale spawn caps.
-	if (entityCountsDirty)
-	{
-		countedMonsters = 0;
-		countedCreatures = 0;
-		countedWaterCreatures = 0;
-		for (Entity *entity : loadedEntityList)
-		{
-			if (entity->isMob()) countedMonsters++;
-			if (entity->isAnimal()) countedCreatures++;
-			if (entity->isWaterMob()) countedWaterCreatures++;
-		}
-		entityCountsDirty = false;
-	}
+    // Size alone is not a valid cache key: one mob can disappear while an
+    // animal is added in the same tick, leaving the vector size unchanged but
+    // the creature categories different. Explicitly invalidate on membership
+    // changes so the Wii keeps the cheap cached counts without stale spawn caps.
+    if (entityCountsDirty)
+    {
+        countedMonsters = 0;
+        countedCreatures = 0;
+        countedWaterCreatures = 0;
+        for (Entity *entity : loadedEntityList)
+        {
+            if (entity->isMob()) countedMonsters++;
+            if (entity->isAnimal()) countedCreatures++;
+            if (entity->isWaterMob()) countedWaterCreatures++;
+        }
+        entityCountsDirty = false;
+    }
 
-	switch (tag)
-	{
-	case EnumCreatureTypeTag::monster_tag:
-		return countedMonsters;
-	case EnumCreatureTypeTag::creature_tag:
-		return countedCreatures;
-	case EnumCreatureTypeTag::waterCreature_tag:
-		return countedWaterCreatures;
-	}
-	return 0;
+    switch (tag)
+    {
+        case EnumCreatureTypeTag::monster_tag:
+            return countedMonsters;
+        case EnumCreatureTypeTag::creature_tag:
+            return countedCreatures;
+        case EnumCreatureTypeTag::waterCreature_tag:
+            return countedWaterCreatures;
+    }
+    return 0;
 }
 
 void World::addLoadedEntities(const std::vector<Entity*>& list)
@@ -5530,13 +5629,13 @@ void World::unloadEntities(const std::vector<Entity*>& list)
             continue;
         }
 
-#if PLATFORM_ENTITY_CHUNK_RETENTION
+        #if PLATFORM_ENTITY_CHUNK_RETENTION
         if (!entity->isDead && entity->getChunkRetentionRadius() >= 0)
         {
             entity->addedToChunk = false;
             continue;
         }
-#endif
+        #endif
 
         if (std::find(unloadedEntityList.begin(), unloadedEntityList.end(), entity) == unloadedEntityList.end())
             unloadedEntityList.push_back(entity);
@@ -5577,24 +5676,24 @@ bool World::canBlockBePlacedAt(int blockId, int x, int y, int z, bool flag, int 
     Block* existingBlock = Block::blocksList[existingBlockId];
     Block* newBlock = Block::blocksList[blockId];
     AxisAlignedBB* aabb = newBlock->getCollisionBoundingBoxFromPool(this, x, y, z);
-    
+
     if (flag)
     {
         aabb = nullptr;
     }
-    
+
     if (aabb != nullptr && !checkIfAABBIsClear(aabb))
     {
         return false;
     }
-    
-    if (existingBlock == Block::waterMoving || existingBlock == Block::waterStill || 
-        existingBlock == Block::lavaMoving || existingBlock == Block::lavaStill || 
+
+    if (existingBlock == Block::waterMoving || existingBlock == Block::waterStill ||
+        existingBlock == Block::lavaMoving || existingBlock == Block::lavaStill ||
         existingBlock == Block::fire || existingBlock == Block::snow)
     {
         existingBlock = nullptr;
     }
-    
+
     return blockId > 0 && existingBlock == nullptr && newBlock->canPlaceBlockOnSide(this, x, y, z, side);
 }
 
@@ -5630,13 +5729,13 @@ PathEntity* World::getPathToEntity(Entity* entity, Entity* target, float maxRang
 
 PathEntity* World::getPathToEntity(Entity* entity, Entity* target, float maxRange, bool openDoors, bool breakDoors, bool avoidWater, bool canSwim)
 {
-#if PLATFORM_BOUNDED_PATHFIND
+    #if PLATFORM_BOUNDED_PATHFIND
     // Round-robin: only a few mobs may run a full A* search per tick. Mobs that
     // miss their turn keep their previous path (or none) and retry next tick.
     if (s_pathfindBudgetThisTick <= 0)
         return nullptr;
     s_pathfindBudgetThisTick--;
-#endif
+    #endif
     int startX = MathHelper::floor_double(entity->posX);
     int startY = MathHelper::floor_double(entity->posY + 1.0);
     int startZ = MathHelper::floor_double(entity->posZ);
@@ -5647,15 +5746,15 @@ PathEntity* World::getPathToEntity(Entity* entity, Entity* target, float maxRang
     int maxX = startX + range;
     int maxY = startY + range;
     int maxZ = startZ + range;
-    
+
     ChunkCache chunkCache(this, minX, minY, minZ, maxX, maxY, maxZ);
-#if PLATFORM_REUSE_PATHFINDER
+    #if PLATFORM_REUSE_PATHFINDER
     return getReusablePathfinder(&chunkCache, openDoors, breakDoors, avoidWater, canSwim)
-        ->createEntityPathTo(entity, target, maxRange);
-#else
+    ->createEntityPathTo(entity, target, maxRange);
+    #else
     Pathfinder pathfinder(&chunkCache, openDoors, breakDoors, avoidWater, canSwim);
     return pathfinder.createEntityPathTo(entity, target, maxRange);
-#endif
+    #endif
 }
 
 PathEntity *World::getPathEntityToEntity(Entity *entity, Entity *target, float maxRange,
@@ -5671,11 +5770,11 @@ PathEntity* World::getEntityPathToXYZ(Entity* entity, int x, int y, int z, float
 
 PathEntity* World::getEntityPathToXYZ(Entity* entity, int x, int y, int z, float maxRange, bool openDoors, bool breakDoors, bool avoidWater, bool canSwim)
 {
-#if PLATFORM_BOUNDED_PATHFIND
+    #if PLATFORM_BOUNDED_PATHFIND
     if (s_pathfindBudgetThisTick <= 0)
         return nullptr;
     s_pathfindBudgetThisTick--;
-#endif
+    #endif
     int startX = MathHelper::floor_double(entity->posX);
     int startY = MathHelper::floor_double(entity->posY);
     int startZ = MathHelper::floor_double(entity->posZ);
@@ -5686,15 +5785,15 @@ PathEntity* World::getEntityPathToXYZ(Entity* entity, int x, int y, int z, float
     int maxX = startX + range;
     int maxY = startY + range;
     int maxZ = startZ + range;
-    
+
     ChunkCache chunkCache(this, minX, minY, minZ, maxX, maxY, maxZ);
-#if PLATFORM_REUSE_PATHFINDER
+    #if PLATFORM_REUSE_PATHFINDER
     return getReusablePathfinder(&chunkCache, openDoors, breakDoors, avoidWater, canSwim)
-        ->createEntityPathTo(entity, x, y, z, maxRange);
-#else
+    ->createEntityPathTo(entity, x, y, z, maxRange);
+    #else
     Pathfinder pathfinder(&chunkCache, openDoors, breakDoors, avoidWater, canSwim);
     return pathfinder.createEntityPathTo(entity, x, y, z, maxRange);
-#endif
+    #endif
 }
 
 bool World::isBlockProvidingPowerTo(int x, int y, int z, int side)
@@ -5704,7 +5803,7 @@ bool World::isBlockProvidingPowerTo(int x, int y, int z, int side)
     {
         return false;
     }
-    
+
     return Block::blocksList[blockId]->isIndirectlyPoweringTo(this, x, y, z, side);
 }
 
@@ -5724,13 +5823,13 @@ bool World::isBlockIndirectlyProvidingPowerTo(int x, int y, int z, int side)
     {
         return isBlockGettingPowered(x, y, z);
     }
-    
+
     int blockId = getBlockId(x, y, z);
     if (blockId == 0)
     {
         return false;
     }
-    
+
     return Block::blocksList[blockId]->isPoweringTo(this, x, y, z, side);
 }
 
@@ -5776,14 +5875,14 @@ EntityPlayer *World::getClosestVulnerablePlayer(double x, double y, double z, do
 
 EntityPlayer* World::getClosestPlayer(double x, double y, double z, double maxDistance)
 {
-#if PLATFORM_SINGLE_LOCAL_PLAYER
+    #if PLATFORM_SINGLE_LOCAL_PLAYER
     // Single-player-only profiles can avoid the generic player vector scan. The common entity-AI path therefore has
     // exactly one local player, so avoid the generic vector scan and keep the
     // local distance arithmetic on the hardware float FPU.
     if (playerEntities.size() == 1)
     {
         EntityPlayer *player = playerEntities[0];
-#if PLATFORM_FLOAT_ENTITY_AI_MATH
+        #if PLATFORM_FLOAT_ENTITY_AI_MATH
         const float dx = (float)(player->posX - x);
         const float dy = (float)(player->posY - y);
         const float dz = (float)(player->posZ - z);
@@ -5793,33 +5892,33 @@ EntityPlayer* World::getClosestPlayer(double x, double y, double z, double maxDi
         {
             return player;
         }
-#else
+        #else
         const double distSq = player->getDistanceSq(x, y, z);
         if (maxDistance < 0.0 || distSq < maxDistance * maxDistance)
         {
             return player;
         }
-#endif
+        #endif
         return nullptr;
     }
-#endif
+    #endif
 
     double closestDist = -1.0;
     EntityPlayer* closestPlayer = nullptr;
-    
+
     for (size_t i = 0; i < playerEntities.size(); i++)
     {
         EntityPlayer* player = playerEntities[i];
         double distSq = player->getDistanceSq(x, y, z);
-        
-        if ((maxDistance < 0.0 || distSq < maxDistance * maxDistance) && 
+
+        if ((maxDistance < 0.0 || distSq < maxDistance * maxDistance) &&
             (closestDist == -1.0 || distSq < closestDist))
         {
             closestDist = distSq;
             closestPlayer = player;
         }
     }
-    
+
     return closestPlayer;
 }
 
@@ -5852,7 +5951,7 @@ EntityPlayer* World::getPlayerEntityByName(const jstring& name)
             return playerEntities[i];
         }
     }
-    
+
     return nullptr;
 }
 
@@ -5865,7 +5964,7 @@ void World::setChunkData(int x, int y, int z, int width, int height, int depth, 
     int offset = 0;
     int minY = y;
     int maxY = y + height;
-    
+
     if (minY < 0)
     {
         minY = 0;
@@ -5874,12 +5973,12 @@ void World::setChunkData(int x, int y, int z, int width, int height, int depth, 
     {
         maxY = WorldHeight::HEIGHT;
     }
-    
+
     for (int cx = chunkX; cx <= endChunkX; cx++)
     {
         int localMinX = x - cx * 16;
         int localMaxX = (x + width) - cx * 16;
-        
+
         if (localMinX < 0)
         {
             localMinX = 0;
@@ -5888,12 +5987,12 @@ void World::setChunkData(int x, int y, int z, int width, int height, int depth, 
         {
             localMaxX = 16;
         }
-        
+
         for (int cz = chunkZ; cz <= endChunkZ; cz++)
         {
             int localMinZ = z - cz * 16;
             int localMaxZ = (z + depth) - cz * 16;
-            
+
             if (localMinZ < 0)
             {
                 localMinZ = 0;
@@ -5902,11 +6001,11 @@ void World::setChunkData(int x, int y, int z, int width, int height, int depth, 
             {
                 localMaxZ = 16;
             }
-            
-            offset = getChunkFromChunkCoords(cx, cz)->setChunkData(const_cast<byte_t *>(data.data()), localMinX, minY, localMinZ, 
-                                                                     localMaxX, maxY, localMaxZ, offset);
+
+            offset = getChunkFromChunkCoords(cx, cz)->setChunkData(const_cast<byte_t *>(data.data()), localMinX, minY, localMinZ,
+                                                                   localMaxX, maxY, localMaxZ, offset);
             markBlocksDirty(cx * 16 + localMinX, minY, cz * 16 + localMinZ,
-                           cx * 16 + localMaxX, maxY, cz * 16 + localMaxZ);
+                            cx * 16 + localMaxX, maxY, cz * 16 + localMaxZ);
         }
     }
 }
@@ -5938,10 +6037,10 @@ long_t World::getRandomSeed()
 Random &World::setRandomSeed(int_t x, int_t z, int_t salt)
 {
     const ulong_t seedBits =
-        static_cast<ulong_t>(static_cast<long_t>(x)) * UINT64_C(341873128712) +
-        static_cast<ulong_t>(static_cast<long_t>(z)) * UINT64_C(132897987541) +
-        static_cast<ulong_t>(getRandomSeed()) +
-        static_cast<ulong_t>(static_cast<long_t>(salt));
+    static_cast<ulong_t>(static_cast<long_t>(x)) * UINT64_C(341873128712) +
+    static_cast<ulong_t>(static_cast<long_t>(z)) * UINT64_C(132897987541) +
+    static_cast<ulong_t>(getRandomSeed()) +
+    static_cast<ulong_t>(static_cast<long_t>(salt));
     rand.setSeed(JavaArithmetic::longFromBits(seedBits));
     return rand;
 }
@@ -5977,17 +6076,17 @@ void World::joinEntityInSurroundings(Entity* entity)
     {
         for (int z = chunkZ - RANGE; z <= chunkZ + RANGE; z++)
         {
-#if PLATFORM_BOUNDED_WORLD
+            #if PLATFORM_BOUNDED_WORLD
             // Do not force-generate the whole 5x5 area here (it stalls for seconds
             // in new terrain). Touch only resident chunks; the mesher and on-demand
             // physics generate what is actually needed, spread across frames.
             if (!chunkProvider->chunkExists(x, z))
                 continue;
-#endif
+            #endif
             getChunkFromChunkCoords(x, z);
         }
     }
-    
+
     auto it = std::find(loadedEntityList.begin(), loadedEntityList.end(), entity);
     if (it == loadedEntityList.end())
     {
@@ -6020,13 +6119,13 @@ void World::updateEntityList()
         }
         ++it;
     }
-    
+
     for (size_t i = 0; i < unloadedEntityList.size(); i++)
     {
         Entity* entity = unloadedEntityList[i];
         int chunkX = entity->chunkCoordX;
         int chunkZ = entity->chunkCoordZ;
-        
+
         if (entity->addedToChunk)
         {
             Chunk *chunk = getChunkIfExists(chunkX, chunkZ);
@@ -6034,41 +6133,41 @@ void World::updateEntityList()
                 chunk->removeEntity(entity);
         }
     }
-    
+
     for (size_t j = 0; j < unloadedEntityList.size(); j++)
     {
         releaseEntitySkin(unloadedEntityList[j]);
     }
-    
+
     unloadedEntityList.clear();
-    
+
     for (size_t k = 0; k < loadedEntityList.size(); k++)
     {
         Entity* entity = loadedEntityList[k];
-        
+
         if (entity->ridingEntity != nullptr)
         {
             if (!entity->ridingEntity->isDead && entity->ridingEntity->riddenByEntity == entity)
             {
                 continue;
             }
-            
+
             entity->ridingEntity->riddenByEntity = nullptr;
             entity->ridingEntity = nullptr;
         }
-        
+
         if (entity->isDead)
         {
             int chunkX = entity->chunkCoordX;
             int chunkZ = entity->chunkCoordZ;
-            
+
             if (entity->addedToChunk)
             {
                 Chunk *chunk = getChunkIfExists(chunkX, chunkZ);
                 if (chunk != nullptr)
                     chunk->removeEntity(entity);
             }
-            
+
             loadedEntityList.erase(loadedEntityList.begin() + static_cast<std::ptrdiff_t>(k));
             untrackLoadedEntityPointer(entity);
             entityCountsDirty = true;
@@ -6105,7 +6204,7 @@ WorldInfo* World::getWorldInfo()
 void World::updateAllPlayersSleepingFlag()
 {
     allPlayersSleeping = !playerEntities.empty();
-    
+
     for (auto it = playerEntities.begin(); it != playerEntities.end(); ++it)
     {
         EntityPlayer* player = *it;
@@ -6120,7 +6219,7 @@ void World::updateAllPlayersSleepingFlag()
 void World::wakeUpAllPlayers()
 {
     allPlayersSleeping = false;
-    
+
     for (auto it = playerEntities.begin(); it != playerEntities.end(); ++it)
     {
         EntityPlayer* player = *it;
@@ -6129,7 +6228,7 @@ void World::wakeUpAllPlayers()
             player->wakeUpPlayer(false, false, true);
         }
     }
-    
+
     stopPrecipitation();
 }
 
@@ -6145,10 +6244,10 @@ bool World::isAllPlayersFullyAsleep()
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     return false;
 }
 

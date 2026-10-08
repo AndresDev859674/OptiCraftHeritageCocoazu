@@ -1,6 +1,10 @@
 #include "PlayerController.h"
 
+#include <cstdio>
+
 #include "PlayerControllerCreative.h"
+#include "PlayerControllerSP.h"
+#include "PlayerControllerSpectator.h"
 
 #include "Block.h"
 #include "Container.h"
@@ -15,9 +19,18 @@
 #include "WorldProvider.h"
 
 PlayerController::PlayerController(Minecraft *minecraft)
-	: mc(minecraft)
-	, field_1064_b(false)
+: mc(minecraft)
+, field_1064_b(false)
 {
+}
+
+PlayerController *PlayerController::createForGameType(Minecraft *minecraft, int_t gameType)
+{
+	if (gameType == 3)
+		return new PlayerControllerSpectator(minecraft);
+	if (gameType == 1)
+		return new PlayerControllerCreative(minecraft);
+	return new PlayerControllerSP(minecraft);
 }
 
 void PlayerController::onWorldChanged(World *)
@@ -36,6 +49,7 @@ bool PlayerController::sendBlockRemoved(int_t i, int_t j, int_t k, int_t)
 	Block *block = Block::blocksList[world->getBlockId(i, j, k)];
 	if (block == nullptr)
 		return false;
+	printf("[PERF] Block Broken: ID=%d at (%d, %d, %d)\n", (int)block->blockID, (int)i, (int)j, (int)k);
 	World::PlayerEditMarkScope editScope(world);
 	world->playAuxSFX(2001, i, j, k, block->blockID + (world->getBlockMetadata(i, j, k) << 12));
 	int_t i1 = world->getBlockMetadata(i, j, k);
@@ -182,6 +196,11 @@ bool PlayerController::isNotCreative()
 }
 
 bool PlayerController::isInCreativeMode()
+{
+	return false;
+}
+
+bool PlayerController::isSpectatorMode() const
 {
 	return false;
 }

@@ -128,6 +128,7 @@ public:
     static Item* hoeGold;
     static Item* seeds;
     static Item* wheat;
+    static Item* straw;
     static Item* bread;
     static Item* helmetLeather;
     static Item* plateLeather;

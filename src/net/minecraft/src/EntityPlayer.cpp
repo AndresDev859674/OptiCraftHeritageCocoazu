@@ -117,8 +117,7 @@ EntityPlayer::EntityPlayer(World *world)
 
 EntityPlayer::~EntityPlayer()
 {
-	if (craftingInventory != inventorySlots)
-		delete craftingInventory;
+	// Active GUI containers are owned by their GuiContainer screen; this is only an alias.
 	delete inventorySlots;
 	delete inventory;
 	delete bedChunkCoordinates;
@@ -1235,7 +1234,7 @@ void EntityPlayer::moveEntityWithHeading(float f, float f1)
 	{
 		const double previousMotionY = motionY;
 		const float previousJumpMovementFactor = jumpMovementFactor;
-		jumpMovementFactor = 0.05f;
+		jumpMovementFactor = capabilities.isSpectator ? 0.1f : 0.05f;
 		EntityLiving::moveEntityWithHeading(f, f1);
 		motionY = previousMotionY * 0.6;
 		jumpMovementFactor = previousJumpMovementFactor;

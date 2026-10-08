@@ -36,8 +36,13 @@ enum LegacyPlayButtonId
     BUTTON_WORLD_BASE = 200
 };
 
-constexpr int_t PLAY_PANEL_TARGET_HEIGHT = 274;
+constexpr int_t PLAY_PANEL_TARGET_HEIGHT = 240;
 constexpr int_t PLAY_CONTENT_INSET = 10;
+constexpr int_t PLAY_PANEL_MAX_WIDTH = 720;
+constexpr int_t PLAY_PANEL_SCREEN_MARGIN = 24;
+constexpr int_t PLAY_PANEL_MIN_WIDTH_FOR_SPLIT = 240;
+constexpr int_t PLAY_PANE_GAP = 10;
+constexpr int_t PLAY_PANE_CONTENT_GAP = 8;
 constexpr int_t PLAY_ROW_HEIGHT = 30;
 constexpr int_t PLAY_ROW_SPACING = 4;
 constexpr int_t PLAY_HEADER_HEIGHT = 28;
@@ -48,6 +53,19 @@ constexpr int_t PLAY_SCROLL_ARROW_BOTTOM_INSET = 8;
 constexpr int_t PLAY_PANEL_FOOTER_GAP = 14;
 
 LegacyUiTexture g_scrollDown("/legacy/scroll_down.png");
+
+struct LegacyPlayPaneLayout
+{
+    bool split;
+    int_t leftX;
+    int_t leftY;
+    int_t leftWidth;
+    int_t leftHeight;
+    int_t rightX;
+    int_t rightY;
+    int_t rightWidth;
+    int_t rightHeight;
+};
 
 // The constants above describe the desktop composition. A console screen is 240 px
 // tall and already only had room for a single world row; with the logo now taking
@@ -72,15 +90,29 @@ LegacyOptionsLayout buildPlayLayout(int_t screenWidth, int_t screenHeight, int_t
 {
     const LegacySceneLayout scene = legacySceneLayout(screenWidth, screenHeight);
     LegacyOptionsLayout result{};
-    result.panelWidth = legacyOptionsPanelWidth(screenWidth, LegacyOptionsLayoutPreset::Form);
+    const int_t screenMargin = std::min<int_t>(PLAY_PANEL_SCREEN_MARGIN,
+        std::max<int_t>(8, screenWidth / 20));
+    result.panelWidth = std::min<int_t>(PLAY_PANEL_MAX_WIDTH,
+        std::max<int_t>(1, screenWidth - screenMargin * 2));
     result.panelX = (screenWidth - result.panelWidth) / 2;
     result.rowHeight = playRowHeight(screenHeight);
     result.rowSpacing = PLAY_ROW_SPACING;
     result.contentX = result.panelX + PLAY_CONTENT_INSET;
     result.contentWidth = result.panelWidth - PLAY_CONTENT_INSET * 2;
 
-    const int_t minimumHeight = playHeaderHeight(screenHeight) + playFooterHeight(screenHeight) +
-        rows * result.rowHeight + std::max<int_t>(0, rows - 1) * result.rowSpacing;
+    const int_t headerHeight = playHeaderHeight(screenHeight);
+    const int_t footerHeight = playFooterHeight(screenHeight);
+    const int_t actionHeight = 2 * result.rowHeight + result.rowSpacing;
+    const int_t worldRows = std::max<int_t>(1, rows);
+    const int_t worldHeight = worldRows * result.rowHeight +
+        std::max<int_t>(0, worldRows - 1) * result.rowSpacing;
+    const bool split = result.panelWidth >= PLAY_PANEL_MIN_WIDTH_FOR_SPLIT;
+    const int_t minimumHeight = split
+        ? 2 * PLAY_CONTENT_INSET + headerHeight + PLAY_PANE_CONTENT_GAP +
+            std::max<int_t>(actionHeight, worldHeight) + PLAY_PANE_CONTENT_GAP + footerHeight
+        : 2 * PLAY_CONTENT_INSET + headerHeight + PLAY_PANE_CONTENT_GAP + actionHeight +
+            PLAY_PANE_GAP + headerHeight + PLAY_PANE_CONTENT_GAP + worldHeight +
+            PLAY_PANE_CONTENT_GAP + footerHeight;
     const int_t footerTop = legacyHintRowY(screenHeight) - PLAY_PANEL_FOOTER_GAP;
     const int_t availableHeight = std::max<int_t>(96, footerTop - scene.contentTop);
     result.panelHeight = std::min<int_t>(PLAY_PANEL_TARGET_HEIGHT,
@@ -92,6 +124,56 @@ LegacyOptionsLayout buildPlayLayout(int_t screenWidth, int_t screenHeight, int_t
     result.titleMaxWidth = scene.titleMaxWidth;
     result.titleMaxHeight = scene.titleMaxHeight;
     return result;
+}
+
+LegacyPlayPaneLayout buildPlayPaneLayout(const LegacyOptionsLayout &layout, int_t screenHeight)
+{
+    LegacyPlayPaneLayout panes{};
+    const int_t innerX = layout.panelX + PLAY_CONTENT_INSET;
+    const int_t innerY = layout.panelY + PLAY_CONTENT_INSET;
+    const int_t innerWidth = std::max<int_t>(1, layout.panelWidth - PLAY_CONTENT_INSET * 2);
+    const int_t innerBottom = layout.panelY + layout.panelHeight - PLAY_CONTENT_INSET;
+    panes.split = layout.panelWidth >= PLAY_PANEL_MIN_WIDTH_FOR_SPLIT;
+    panes.leftX = innerX;
+    panes.leftY = innerY;
+
+    if (panes.split)
+    {
+        const int_t availableWidth = std::max<int_t>(1, innerWidth - PLAY_PANE_GAP);
+        const int_t leftPanePercent = layout.panelWidth < 520 ? 48 : 43;
+        panes.leftWidth = availableWidth * leftPanePercent / 100;
+        panes.rightX = panes.leftX + panes.leftWidth + PLAY_PANE_GAP;
+        panes.rightWidth = availableWidth - panes.leftWidth;
+        panes.leftHeight = panes.rightHeight = std::max<int_t>(1, innerBottom - innerY);
+        panes.rightY = innerY;
+    }
+    else
+    {
+        panes.leftWidth = innerWidth;
+        panes.leftHeight = playHeaderHeight(screenHeight) + PLAY_PANE_CONTENT_GAP +
+            2 * layout.rowHeight + layout.rowSpacing + PLAY_PANE_CONTENT_GAP;
+        panes.rightX = innerX;
+        panes.rightY = innerY + panes.leftHeight + PLAY_PANE_GAP;
+        panes.rightWidth = innerWidth;
+        panes.rightHeight = std::max<int_t>(1, innerBottom - panes.rightY);
+    }
+    return panes;
+}
+
+void drawPlayPaneFrames(LegacyOptionsPanel &panelRenderer, const LegacyPlayPaneLayout &panes)
+{
+    LegacyOptionsLayout pane{};
+    pane.panelX = panes.leftX;
+    pane.panelY = panes.leftY;
+    pane.panelWidth = panes.leftWidth;
+    pane.panelHeight = panes.leftHeight;
+    panelRenderer.draw(pane);
+
+    pane.panelX = panes.rightX;
+    pane.panelY = panes.rightY;
+    pane.panelWidth = panes.rightWidth;
+    pane.panelHeight = panes.rightHeight;
+    panelRenderer.draw(pane);
 }
 
 Block *entryIconBlock(int_t buttonId)
@@ -168,6 +250,7 @@ void drawPanelTitle(FontRenderer *font, const std::string &text, int_t centerX, 
     font->drawString(text, x + 1, y + 1, 0xd0d0d0);
     font->drawString(text, x, y, 0x303030);
 }
+
 }
 
 LegacyPlayGameScreen::LegacyPlayGameScreen(GuiScreen *parent)
@@ -178,14 +261,13 @@ LegacyPlayGameScreen::LegacyPlayGameScreen(GuiScreen *parent)
 
 int_t LegacyPlayGameScreen::maxVisibleWorlds() const
 {
-    // Measure with the same scaled metrics buildPlayLayout() draws with. With
-    // only the two fixed rows the panel takes its natural height, so whatever
-    // is left below them is the room for world rows.
-    const LegacyOptionsLayout base = buildPlayLayout(width, height, 2);
-    const int_t staticRowsHeight = 2 * base.rowHeight + base.rowSpacing;
-    const int_t available = base.panelHeight - playHeaderHeight(height) - playFooterHeight(height) -
-        staticRowsHeight;
-    return std::max<int_t>(0, std::min<int_t>(4, (available + base.rowSpacing) /
+    const LegacyOptionsLayout base = buildPlayLayout(width, height, 1);
+    const LegacyPlayPaneLayout panes = buildPlayPaneLayout(base, height);
+    const int_t firstRowY = panes.rightY + playHeaderHeight(height) + PLAY_PANE_CONTENT_GAP;
+    const int_t scrollMarkerSpace = PLAY_SCROLL_ARROW_BOTTOM_INSET + PLAY_SCROLL_ARROW_HEIGHT +
+        PLAY_PANE_CONTENT_GAP;
+    const int_t available = panes.rightY + panes.rightHeight - scrollMarkerSpace - firstRowY;
+    return std::max<int_t>(1, std::min<int_t>(8, (available + base.rowSpacing) /
         (base.rowHeight + base.rowSpacing)));
 }
 
@@ -217,20 +299,25 @@ void LegacyPlayGameScreen::rebuildButtons()
     visibleWorldCount = std::min<int_t>(pageSize,
         std::max<int_t>(0, static_cast<int_t>(saveList.size()) - firstWorldIndex));
 
-    const int_t rows = 2 + visibleWorldCount;
-    layout = buildPlayLayout(width, height, rows);
+    layout = buildPlayLayout(width, height, visibleWorldCount);
+    const LegacyPlayPaneLayout panes = buildPlayPaneLayout(layout, height);
+    const int_t actionX = panes.leftX + PLAY_PANE_CONTENT_GAP;
+    const int_t actionWidth = std::max<int_t>(1, panes.leftWidth - PLAY_PANE_CONTENT_GAP * 2);
+    const int_t actionY = panes.leftY + playHeaderHeight(height) + PLAY_PANE_CONTENT_GAP;
+    controlList.push_back(new LegacyGuiButton(BUTTON_CREATE_WORLD, actionX, actionY,
+        actionWidth, layout.rowHeight, "Create New World"));
+    controlList.push_back(new LegacyGuiButton(BUTTON_TUTORIAL, actionX,
+        actionY + layout.rowHeight + layout.rowSpacing, actionWidth, layout.rowHeight,
+        "Play Tutorial"));
 
-    int_t row = 0;
-    controlList.push_back(new LegacyGuiButton(BUTTON_CREATE_WORLD, layout.contentX, layout.rowY(row++),
-        layout.contentWidth, layout.rowHeight, "Create New World"));
-    controlList.push_back(new LegacyGuiButton(BUTTON_TUTORIAL, layout.contentX, layout.rowY(row++),
-        layout.contentWidth, layout.rowHeight, "Play Tutorial"));
-
+    const int_t worldX = panes.rightX + PLAY_PANE_CONTENT_GAP;
+    const int_t worldWidth = std::max<int_t>(1, panes.rightWidth - PLAY_PANE_CONTENT_GAP * 2);
+    const int_t worldY = panes.rightY + playHeaderHeight(height) + PLAY_PANE_CONTENT_GAP;
     for (int_t i = 0; i < visibleWorldCount; ++i)
     {
         const int_t saveIndex = firstWorldIndex + i;
         controlList.push_back(new LegacyGuiButton(BUTTON_WORLD_BASE + saveIndex,
-            layout.contentX, layout.rowY(row++), layout.contentWidth, layout.rowHeight,
+            worldX, worldY + i * (layout.rowHeight + layout.rowSpacing), worldWidth, layout.rowHeight,
             getSaveName(saveIndex)));
     }
 
@@ -404,10 +491,21 @@ void LegacyPlayGameScreen::handleMouseInput()
 {
     GuiSelectWorld::handleMouseInput();
     int_t wheel = lwjgl::Mouse::getEventDWheel();
-    if (wheel > 0)
-        moveSelection(-1);
-    else if (wheel < 0)
-        moveSelection(1);
+    if (wheel == 0)
+        return;
+
+    const LegacyPlayPaneLayout panes = buildPlayPaneLayout(layout, height);
+    if (lastMouseX < panes.rightX || lastMouseX >= panes.rightX + panes.rightWidth ||
+        lastMouseY < panes.rightY || lastMouseY >= panes.rightY + panes.rightHeight)
+        return;
+
+    const int_t nextPage = wheel > 0 ? page - 1 : page + 1;
+    if (nextPage < 0 || nextPage > maxPage())
+        return;
+    page = nextPage;
+    rebuildButtons();
+    if (mc != nullptr && mc->sndManager != nullptr)
+        mc->sndManager->playSoundFX("random.scroll", 1.0f, 1.0f);
 }
 
 void LegacyPlayGameScreen::drawLegacyScene(float_t partialTick)
@@ -454,9 +552,9 @@ void LegacyPlayGameScreen::drawScrollIndicators()
     if (texture < 0)
         return;
 
-    const int_t x = layout.panelX + (layout.panelWidth - PLAY_SCROLL_ARROW_WIDTH) / 2;
-    const int_t y = layout.panelY + layout.panelHeight - PLAY_SCROLL_ARROW_BOTTOM_INSET -
-        PLAY_SCROLL_ARROW_HEIGHT;
+    const LegacyPlayPaneLayout panes = buildPlayPaneLayout(layout, height);
+    const int_t x = panes.rightX + (panes.rightWidth - PLAY_SCROLL_ARROW_WIDTH) / 2;
+    const int_t y = panes.rightY + panes.rightHeight - PLAY_SCROLL_ARROW_BOTTOM_INSET - PLAY_SCROLL_ARROW_HEIGHT;
     legacyDrawUiTexture(texture, x, y, PLAY_SCROLL_ARROW_WIDTH, PLAY_SCROLL_ARROW_HEIGHT, zLevel + 2.0f);
 }
 
@@ -467,6 +565,8 @@ void LegacyPlayGameScreen::drawMenuControlHints()
 
 void LegacyPlayGameScreen::drawScreen(int_t mouseX, int_t mouseY, float_t partialTick)
 {
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
     const int_t previousHover = hoveredControlIndex;
     hoveredControlIndex = legacyHoveredSelectableButton(controlList, mouseX, mouseY);
     if (hoveredControlIndex >= 0)
@@ -479,14 +579,18 @@ void LegacyPlayGameScreen::drawScreen(int_t mouseX, int_t mouseY, float_t partia
     }
 
     drawLegacyScene(partialTick);
-    drawPanelTitle(fontRenderer, "Start Game", width / 2, layout.panelY + 8);
+    const LegacyPlayPaneLayout panes = buildPlayPaneLayout(layout, height);
+    drawPlayPaneFrames(panelRenderer, panes);
+    drawPanelTitle(fontRenderer, "Start Game", panes.leftX + panes.leftWidth / 2, panes.leftY + 8);
+    drawPanelTitle(fontRenderer, "Join Game", panes.rightX + panes.rightWidth / 2, panes.rightY + 8);
     GuiScreen::drawScreen(mouseX, mouseY, partialTick);
     drawEntryIcons();
     drawScrollIndicators();
     drawMenuControlHints();
 
     if (saveList.empty())
-        drawPanelTitle(fontRenderer, "No Games Found", width / 2, layout.rowY(2) + 10);
+        drawPanelTitle(fontRenderer, "No Games Found", panes.rightX + panes.rightWidth / 2,
+            panes.rightY + panes.rightHeight / 2 - 4);
     if (tutorialMessageTicks > 0 && !tutorialMessage.empty())
         drawCenteredString(fontRenderer, tutorialMessage, width / 2,
             layout.panelY + layout.panelHeight - 15, 0xffff00);

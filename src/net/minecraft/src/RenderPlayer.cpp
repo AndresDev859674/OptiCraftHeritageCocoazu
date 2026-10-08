@@ -15,6 +15,7 @@
 #include "FontRenderer.h"
 #include "Tessellator.h"
 #include "client/Minecraft.h"
+#include "PlayerController.h"
 #include "platform/RenderAPI.h"
 
 
@@ -73,6 +74,11 @@ int RenderPlayer::shouldRenderPass(EntityLiving* entityLiving, int i, float f)
 }
 
 void RenderPlayer::renderPlayer(EntityPlayer* entityPlayer, double d, double d1, double d2, float f, float f1) {
+    Minecraft *minecraft = Minecraft::getMinecraft();
+    if (entityPlayer != nullptr && minecraft != nullptr && entityPlayer == minecraft->thePlayer &&
+        minecraft->playerController != nullptr && minecraft->playerController->isSpectatorMode())
+        return;
+
     ItemStack* itemStack = entityPlayer->inventory->getCurrentItem();
     int heldItemRight = itemStack != nullptr ? 1 : 0;
     bool aimedBow = false;

@@ -537,7 +537,7 @@ void GuiMainMenu::drawScreen(int_t mouseX, int_t mouseY, float_t partialTick)
     {
         drawCenteredString(fontRenderer, "Based on : Opticraft Heritage Edition", width / 2, 4, 0xffffff);
         drawString(fontRenderer, "Minecraft 1.2.5", 2, height - 10, 0xffffff);
-        drawString(fontRenderer, "Cocoazu Mod v1.0.1 (OHE c8b61d2)", 2, height - 20, 0xffffff);
+        drawString(fontRenderer, "Cocoazu Mod v1.1 (OHE c8b61d2)", 2, height - 20, 0xffffff);
         const std::string copyright = "Copyright Mojang AB. Do not distribute!";
         drawString(fontRenderer, copyright, width - fontRenderer->getStringWidth(copyright) - 2, height - 10, 0xffffff);
     }

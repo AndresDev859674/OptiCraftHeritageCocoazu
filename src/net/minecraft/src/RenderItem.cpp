@@ -16,37 +16,37 @@
 #include "platform/RenderAPI.h"
 
 namespace {
-void renderEndPortalGuiIcon(RenderEngine *renderEngine, int x, int y, float zLevel) {
-    Tessellator *tessellator = &Tessellator::instance;
+    void renderEndPortalGuiIcon(RenderEngine *renderEngine, int x, int y, float zLevel) {
+        Tessellator *tessellator = &Tessellator::instance;
 
-    renderDisable(RenderCapability::Lighting);
-    renderEnable(RenderCapability::Blend);
-    renderBlendFunc(RenderBlendFactor::SrcAlpha, RenderBlendFactor::OneMinusSrcAlpha);
-    renderColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    renderEngine->bindTexture(renderEngine->getTexture("/misc/tunnel.png"));
+        renderDisable(RenderCapability::Lighting);
+        renderEnable(RenderCapability::Blend);
+        renderBlendFunc(RenderBlendFactor::SrcAlpha, RenderBlendFactor::OneMinusSrcAlpha);
+        renderColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        renderEngine->bindTexture(renderEngine->getTexture("/misc/tunnel.png"));
 
-    tessellator->startDrawingQuads();
-    tessellator->addVertexWithUV(x, y + 16, zLevel, 0.0f, 1.0f);
-    tessellator->addVertexWithUV(x + 16, y + 16, zLevel, 1.0f, 1.0f);
-    tessellator->addVertexWithUV(x + 16, y, zLevel, 1.0f, 0.0f);
-    tessellator->addVertexWithUV(x, y, zLevel, 0.0f, 0.0f);
-    tessellator->draw();
+        tessellator->startDrawingQuads();
+        tessellator->addVertexWithUV(x, y + 16, zLevel, 0.0f, 1.0f);
+        tessellator->addVertexWithUV(x + 16, y + 16, zLevel, 1.0f, 1.0f);
+        tessellator->addVertexWithUV(x + 16, y, zLevel, 1.0f, 0.0f);
+        tessellator->addVertexWithUV(x, y, zLevel, 0.0f, 0.0f);
+        tessellator->draw();
 
-    renderEngine->bindTexture(renderEngine->getTexture("/misc/particlefield.png"));
-    renderBlendFunc(RenderBlendFactor::One, RenderBlendFactor::One);
-    renderColor4f(0.25f, 0.45f, 0.75f, 1.0f);
+        renderEngine->bindTexture(renderEngine->getTexture("/misc/particlefield.png"));
+        renderBlendFunc(RenderBlendFactor::One, RenderBlendFactor::One);
+        renderColor4f(0.25f, 0.45f, 0.75f, 1.0f);
 
-    tessellator->startDrawingQuads();
-    tessellator->addVertexWithUV(x, y + 16, zLevel, 0.0f, 1.0f);
-    tessellator->addVertexWithUV(x + 16, y + 16, zLevel, 1.0f, 1.0f);
-    tessellator->addVertexWithUV(x + 16, y, zLevel, 1.0f, 0.0f);
-    tessellator->addVertexWithUV(x, y, zLevel, 0.0f, 0.0f);
-    tessellator->draw();
+        tessellator->startDrawingQuads();
+        tessellator->addVertexWithUV(x, y + 16, zLevel, 0.0f, 1.0f);
+        tessellator->addVertexWithUV(x + 16, y + 16, zLevel, 1.0f, 1.0f);
+        tessellator->addVertexWithUV(x + 16, y, zLevel, 1.0f, 0.0f);
+        tessellator->addVertexWithUV(x, y, zLevel, 0.0f, 0.0f);
+        tessellator->draw();
 
-    renderColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    renderDisable(RenderCapability::Blend);
-    renderEnable(RenderCapability::Lighting);
-}
+        renderColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        renderDisable(RenderCapability::Blend);
+        renderEnable(RenderCapability::Lighting);
+    }
 }
 
 void RenderItem::renderAABB(AxisAlignedBB *aabb)
@@ -154,8 +154,8 @@ void RenderItem::doRenderItem(EntityItem* entityitem, double d, double d1, doubl
         const int renderPasses = item->func_46058_c() ? 2 : 1;
         for (int renderPass = 0; renderPass < renderPasses; ++renderPass) {
             const int icon = item->func_46058_c()
-                ? item->func_46057_a(itemstack->getItemDamage(), renderPass)
-                : itemstack->getIconIndex();
+            ? item->func_46057_a(itemstack->getItemDamage(), renderPass)
+            : itemstack->getIconIndex();
             if (!item->func_46058_c() && itemstack->itemID < 256) {
                 loadTexture("/terrain.png");
             }
@@ -214,6 +214,10 @@ void RenderItem::drawItemIntoGui(FontRenderer* fontrenderer, RenderEngine* rende
         int j1 = i;
         renderengine->bindTexture(renderengine->getTexture("/terrain.png"));
         Block* block = Block::blocksList[j1];
+        renderEnable(RenderCapability::DepthTest);
+        renderDepthMask(true);
+        renderDepthFunc(RenderCompare::LessEqual);
+        renderDisable(RenderCapability::CullFace);
         renderPushMatrix();
         renderTranslate(l - 2, i1 + 3, -3.0f + zLevel);
         renderScale(10.0f, 10.0f, 10.0f);
@@ -233,6 +237,8 @@ void RenderItem::drawItemIntoGui(FontRenderer* fontrenderer, RenderEngine* rende
         renderBlocks->renderBlockOnInventory(block, j, 1.0f);
         renderBlocks->field_31088_b = true;
         renderPopMatrix();
+        renderDisable(RenderCapability::DepthTest);
+        renderEnable(RenderCapability::CullFace);
     } else if (item->func_46058_c()) {
         renderDisable(RenderCapability::Lighting);
         renderengine->bindTexture(renderengine->getTexture("/gui/items.png"));
@@ -274,7 +280,7 @@ void RenderItem::renderItemIntoGUI(FontRenderer* fontrenderer, RenderEngine* ren
     }
 
     drawItemIntoGui(fontrenderer, renderengine, itemstack->itemID, itemstack->getItemDamage(), itemstack->getIconIndex(), i, j);
-#ifndef PS2_PLATFORM
+    #ifndef PS2_PLATFORM
     // Enchantment glint: the DstColor/SrcColor+One blend passes do not map to
     // the GS blend equation and render as garbage on PS2.
     if (itemstack->hasEffect()) {
@@ -293,7 +299,7 @@ void RenderItem::renderItemIntoGUI(FontRenderer* fontrenderer, RenderEngine* ren
         renderEnable(RenderCapability::Lighting);
         renderDepthFunc(RenderCompare::LessEqual);
     }
-#endif
+    #endif
 }
 
 void RenderItem::renderGuiItemGlint(int seed, int x, int y, int width, int height) {
@@ -306,7 +312,7 @@ void RenderItem::renderGuiItemGlint(int seed, int x, int y, int width, int heigh
         const float vScale = 0.00390625f;
         const long_t period = 3000LL + static_cast<long_t>(pass) * 1873LL;
         const float uOffset = static_cast<float>(System::currentTimeMillis() % period) /
-                              (3000.0f + static_cast<float>(pass * 1873)) * 256.0f;
+        (3000.0f + static_cast<float>(pass * 1873)) * 256.0f;
         const float vOffset = 0.0f;
         const float skew = pass == 1 ? -1.0f : 4.0f;
 

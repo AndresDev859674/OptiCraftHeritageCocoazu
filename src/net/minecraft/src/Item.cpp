@@ -100,6 +100,7 @@ Item* Item::hoeDiamond = nullptr;
 Item* Item::hoeGold = nullptr;
 Item* Item::seeds = nullptr;
 Item* Item::wheat = nullptr;
+Item* Item::straw = nullptr;
 Item* Item::bread = nullptr;
 Item* Item::helmetLeather = nullptr;
 Item* Item::plateLeather = nullptr;
@@ -601,6 +602,7 @@ void Item::initItems() {
     monsterPlacer = (new ItemMonsterPlacer(127))->setIconCoord(9, 9)->setItemName("monsterPlacer");
     expBottle = (new ItemExpBottle(128))->setIconCoord(11, 10)->setItemName("expBottle");
     fireballCharge = (new ItemFireball(129))->setIconCoord(14, 2)->setItemName("fireball");
+    straw = (new Item(130))->setIconCoord(9, 1)->setItemName("straw");
     record13 = (new ItemRecord(2000, "13"))->setIconCoord(0, 15)->setItemName("record");
     recordCat = (new ItemRecord(2001, "cat"))->setIconCoord(1, 15)->setItemName("record");
     recordBlocks = (new ItemRecord(2002, "blocks"))->setIconCoord(2, 15)->setItemName("record");
@@ -667,6 +669,7 @@ void Item::cleanup()
     hoeGold = nullptr;
     seeds = nullptr;
     wheat = nullptr;
+    straw = nullptr;
     bread = nullptr;
     helmetLeather = nullptr;
     plateLeather = nullptr;

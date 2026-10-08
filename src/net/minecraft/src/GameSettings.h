@@ -198,5 +198,7 @@ public:
 	bool ofAnimatedExplosion;
 	bool ofAnimatedFlame;
 	bool ofAnimatedSmoke;
+	bool legacyCrafting;
+	bool legacyCreative;
 	KeyBinding *ofKeyBindZoom;
 };

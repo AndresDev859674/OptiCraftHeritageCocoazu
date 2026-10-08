@@ -1,6 +1,8 @@
 #include "ChunkCache.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <cmath>
 #include <limits>
 #include <stdexcept>
 #include "java/Arithmetic.h"
@@ -12,6 +14,8 @@
 #include "EnumSkyBlock.h"
 #include "WorldHeight.h"
 #include "Block.h"
+#include "EntityPlayerSP.h"
+#include "ItemStack.h"
 #include "Material.h"
 #include "WorldProvider.h"
 
@@ -94,6 +98,25 @@ ChunkCache::ChunkCache(World *world, int_t i, int_t j, int_t k, int_t l, int_t i
 
 #if PLATFORM_FAST_CHUNK_BLOCK_READS
 	fastBasesValid = resolveFastBases();
+#endif
+
+#if PLATFORM_PC
+	if (world != nullptr && Block::torchWood != nullptr)
+	{
+		for (EntityPlayer *player : world->playerEntities)
+		{
+			EntityPlayerSP *localPlayer = dynamic_cast<EntityPlayerSP *>(player);
+			ItemStack *heldItem = localPlayer != nullptr ? localPlayer->getCurrentEquippedItem() : nullptr;
+			if (heldItem == nullptr || heldItem->itemID != Block::torchWood->blockID)
+				continue;
+
+			dynamicLightX = static_cast<int_t>(std::floor(localPlayer->posX));
+			dynamicLightY = static_cast<int_t>(std::floor(localPlayer->posY + 1.0));
+			dynamicLightZ = static_cast<int_t>(std::floor(localPlayer->posZ));
+			dynamicLightActive = true;
+			break;
+		}
+	}
 #endif
 }
 
@@ -253,9 +276,14 @@ int_t ChunkCache::getSpecialBlockBrightness(EnumSkyBlock *type, int_t i, int_t j
 		return type->defaultLightValue;
 
 	Chunk *chunk = chunkArray[cellIndex(localChunkX, localChunkZ)];
-	return chunk != nullptr
+	int_t brightness = chunk != nullptr
 		? chunk->getSavedLightValue(type, i & 15, j, k & 15)
 		: type->defaultLightValue;
+#if PLATFORM_PC
+	if (type == EnumSkyBlock::Block)
+		brightness = std::max(brightness, getDynamicLightValue(i, j, k));
+#endif
+	return brightness;
 }
 
 
@@ -335,20 +363,58 @@ int_t ChunkCache::getLightValueExt(int_t i, int_t j, int_t k, bool flag)
 		if (section == nullptr)
 		{
 			const int_t sky = worldObj->worldProvider->hasNoSky ? 0 : 15 - worldObj->skylightSubtracted;
-			return sky > 0 ? sky : 0;
+			const int_t light = sky > 0 ? sky : 0;
+			#if PLATFORM_PC
+			return std::max(light, getDynamicLightValue(i, j, k));
+			#else
+			return light;
+			#endif
 		}
 		int_t light = worldObj->worldProvider->hasNoSky ? 0 : section->getExtSkylightValue(i & 0xf, j & 0xf, k & 0xf);
 		if (light > 0)
 			Chunk::isLit = true;
 		light -= worldObj->skylightSubtracted;
-		const int_t emitted = section->getExtBlocklightValue(i & 0xf, j & 0xf, k & 0xf);
+		int_t emitted = section->getExtBlocklightValue(i & 0xf, j & 0xf, k & 0xf);
+		#if PLATFORM_PC
+		emitted = std::max(emitted, getDynamicLightValue(i, j, k));
+		#endif
 		return emitted > light ? emitted : light;
 	}
 #endif
 	Chunk *chunk = chunkArray[cell];
 	if (chunk == nullptr) return 0;
-	return chunk->getBlockLightValue(i & 0xf, j, k & 0xf, worldObj->skylightSubtracted);
+	const int_t light = chunk->getBlockLightValue(i & 0xf, j, k & 0xf, worldObj->skylightSubtracted);
+	#if PLATFORM_PC
+	return std::max(light, getDynamicLightValue(i, j, k));
+	#else
+	return light;
+	#endif
 }
+
+#if PLATFORM_PC
+int_t ChunkCache::getDynamicLightValue(int_t x, int_t y, int_t z) const
+{
+	if (!dynamicLightActive)
+		return 0;
+
+	const int_t dx = x - dynamicLightX;
+	const int_t dy = y - dynamicLightY;
+	const int_t dz = z - dynamicLightZ;
+	constexpr int_t fullLightLevel = 9;
+	constexpr int_t fullBrightnessRadius = 2;
+	constexpr int_t falloffDistance = 6;
+	constexpr int_t lightRadius = fullBrightnessRadius + falloffDistance;
+	if (std::abs(dx) >= lightRadius || std::abs(dy) >= lightRadius || std::abs(dz) >= lightRadius)
+		return 0;
+	const int_t distanceSquared = dx * dx + dy * dy + dz * dz;
+	if (distanceSquared >= lightRadius * lightRadius)
+		return 0;
+	const int_t distance = static_cast<int_t>(std::ceil(std::sqrt(static_cast<float>(distanceSquared))));
+	if (distance <= fullBrightnessRadius)
+		return fullLightLevel;
+	return fullLightLevel - ((distance - fullBrightnessRadius) * fullLightLevel) / falloffDistance;
+}
+#endif
 
 int_t ChunkCache::getBlockMetadata(int_t i, int_t j, int_t k)
 {
