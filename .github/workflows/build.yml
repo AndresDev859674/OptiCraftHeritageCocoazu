@@ -28,7 +28,7 @@ jobs:
             pkg_name: mingw-w64
           - arch: arm64
             compiler_prefix: aarch64-w64-mingw32
-            pkg_name: g++-mingw-w64-aarch64
+            pkg_name: gcc-mingw-w64-aarch64 g++-mingw-w64-aarch64
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -112,22 +112,27 @@ jobs:
             id: x64-generic
             cxx_flags: ""
             multilib: false
+            use_preset: false
           - name: x86 32-bit
             id: x86-32bit
             cxx_flags: "-m32"
             multilib: true
+            use_preset: true
           - name: x86_64-v3
             id: x86_64-v3
             cxx_flags: "-march=x86-64-v3"
             multilib: false
+            use_preset: false
           - name: Zen 3
             id: zen3
             cxx_flags: "-march=znver3"
             multilib: false
+            use_preset: false
           - name: Zen 4
             id: zen4
             cxx_flags: "-march=znver4"
             multilib: false
+            use_preset: false
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -171,7 +176,11 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -B build/linux-${{ matrix.id }} -G "Ninja" \
+          PRESET_ARGS=""
+          if [ "${{ matrix.use_preset }}" = "true" ]; then
+            PRESET_ARGS="--preset gcc32-legacy-release"
+          fi
+          cmake -B build/linux-${{ matrix.id }} -G "Ninja" $PRESET_ARGS \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
@@ -308,11 +317,13 @@ jobs:
             suffix: arm64
             arch: arm64
             target: '11.0'
+            brew_prefix: '/opt/homebrew'
           - name: macOS x64 Clang
             runner: macos-26-intel
             suffix: x64
             arch: x86_64
             target: '10.15'
+            brew_prefix: '/usr/local'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -351,12 +362,14 @@ jobs:
           cmake -B build/macos -G "Ninja" \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_PREFIX_PATH="${{ matrix.brew_prefix }}" \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.target }} \
-            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src -I${{ matrix.brew_prefix }}/include" \
+            "-DCMAKE_EXE_LINKER_FLAGS=-L${{ matrix.brew_prefix }}/lib" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
