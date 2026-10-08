@@ -37,10 +37,11 @@ jobs:
             echo "SDL_net already present"
           fi
 
-      - name: Install build tools & MinGW
+      - name: Install build tools, MinGW & SDL2
         run: |
           sudo apt update
-          sudo apt install -y ninja-build ccache mingw-w64
+          sudo apt install -y ninja-build ccache mingw-w64 \
+            libsdl2-dev libsdl2-net-dev
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -55,7 +56,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -B build -G "Ninja" \
+          cmake -B build/win64 -G "Ninja" \
             -DCMAKE_SYSTEM_NAME=Windows \
             -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
             -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
@@ -66,12 +67,12 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: cmake --build build/win64 -j$(nproc)
 
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Debug/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp build/OptiCraft.exe dist/OptiCraft-windows-x64.exe
+          cp bin/Debug/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp build/win64/OptiCraft.exe dist/OptiCraft-windows-x64.exe
           tar -C dist -czf OptiCraft-windows-x64.tar.gz OptiCraft-windows-x64.exe
 
       - uses: actions/upload-artifact@v7
@@ -107,12 +108,12 @@ jobs:
             echo "SDL_net already present"
           fi
 
-      - name: Install build tools
+      - name: Install build tools, SDL2 & SDL2_net
         run: |
           sudo apt update
           sudo apt install -y ninja-build ccache \
             libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
-            libasound2-dev
+            libasound2-dev libsdl2-dev libsdl2-net-dev
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -127,7 +128,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -B build -G "Ninja" \
+          cmake -B build/linux -G "Ninja" \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
@@ -136,12 +137,12 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: cmake --build build/linux -j$(nproc)
 
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-linux-x64-gcc || cp build/OptiCraft dist/OptiCraft-linux-x64-gcc
+          cp bin/Release/OptiCraft dist/OptiCraft-linux-x64-gcc || cp build/linux/OptiCraft dist/OptiCraft-linux-x64-gcc
           tar -C dist -czf OptiCraft-linux-x64-gcc.tar.gz OptiCraft-linux-x64-gcc
 
       - uses: actions/upload-artifact@v7
@@ -191,8 +192,8 @@ jobs:
             echo "SDL_net already present"
           fi
 
-      - name: Install build tools
-        run: brew install ninja ccache
+      - name: Install build tools & SDL2
+        run: brew install ninja ccache sdl2 sdl2_net
 
       - name: Configure ccache dir
         run: echo "CCACHE_DIR=$HOME/.cache/ccache" >> "$GITHUB_ENV"
@@ -210,7 +211,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -B build -G "Ninja" \
+          cmake -B build/macos -G "Ninja" \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
             -DSDL_PIPEWIRE=OFF \
@@ -222,12 +223,12 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build -j$(sysctl -n hw.ncpu)
+        run: cmake --build build/macos -j$(sysctl -n hw.ncpu)
 
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp build/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang
+          cp bin/Release/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp build/macos/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang
           tar -C dist -czf OptiCraft-macos-${{ matrix.suffix }}-clang.tar.gz OptiCraft-macos-${{ matrix.suffix }}-clang
 
       - uses: actions/upload-artifact@v7
