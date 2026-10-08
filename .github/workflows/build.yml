@@ -75,7 +75,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Debug/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp build/win64/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp bin/Release/OptiCraft.exe dist/OptiCraft-windows-x64.exe
+          EXE_PATH=$(find . -type f -name "OptiCraft.exe" | head -n 1)
+          cp "$EXE_PATH" dist/OptiCraft-windows-x64.exe
           tar -C dist -czf OptiCraft-windows-x64.tar.gz OptiCraft-windows-x64.exe
 
       - uses: actions/upload-artifact@v7
@@ -146,7 +147,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-linux-x64-gcc || cp build/linux/OptiCraft dist/OptiCraft-linux-x64-gcc || cp bin/Debug/OptiCraft dist/OptiCraft-linux-x64-gcc
+          BIN_PATH=$(find build/linux bin -type f -name "OptiCraft" -not -path "*/CMakeFiles/*" | head -n 1)
+          cp "$BIN_PATH" dist/OptiCraft-linux-x64-gcc
           tar -C dist -czf OptiCraft-linux-x64-gcc.tar.gz OptiCraft-linux-x64-gcc
 
       - uses: actions/upload-artifact@v7
@@ -233,7 +235,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp build/macos/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp bin/Debug/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang
+          BIN_PATH=$(find build/macos bin -type f -name "OptiCraft" -not -path "*/CMakeFiles/*" | head -n 1)
+          cp "$BIN_PATH" dist/OptiCraft-macos-${{ matrix.suffix }}-clang
           tar -C dist -czf OptiCraft-macos-${{ matrix.suffix }}-clang.tar.gz OptiCraft-macos-${{ matrix.suffix }}-clang
 
       - uses: actions/upload-artifact@v7
