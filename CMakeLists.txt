@@ -233,8 +233,11 @@ file(GLOB_RECURSE ALL_GAME_SOURCES "src/*.cpp" "src/*.c")
 
 # Exclude from others platforms
 if(NOT WIN32)
-    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/win32/.*")
-    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Win32\\.cpp$")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/linux/.*")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Linux\\.cpp$")
+else()
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/pc/linux/.*")
+    list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX ".*_Linux\\.cpp$")
 endif()
 
 list(FILTER ALL_GAME_SOURCES EXCLUDE REGEX "src/wii/.*")
@@ -270,12 +273,6 @@ endif()
 # cross-translation-unit accessors (getBlockId, getSavedLightValue, Chunk /
 # NibbleArray getters) called millions of times per frame in the hot loops;
 # without LTO the compiler cannot inline them across .cpp boundaries.
-#
-# OFF by default: MinGW's bundled ld can fail the final link with
-# "plugin needed to handle lto object" because it isn't invoked with GCC's LTO
-# linker plugin. The bulk of the codegen win already comes from -O2/-O3 (per-TU
-# inlining); LTO only adds the cross-TU part. Turn this on (and make sure the
-# toolchain uses gcc-ar / gcc-ranlib and -fuse-linker-plugin) to chase the rest.
 option(OPTICRAFT_ENABLE_LTO "Enable Link-Time Optimization for Release builds" OFF)
 if(OPTICRAFT_ENABLE_LTO)
     include(CheckIPOSupported)

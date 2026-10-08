@@ -114,10 +114,12 @@ public:
      * that struct stat has a struct timespec st_mtim member. We need this
      * check because there are some platforms that claim to be POSIX 2008
      * compliant but which do not have st_mtim... */
-	#if (PLATFORM_POSIX_VERSION >= 200809L) && defined(st_mtime)
+	#if defined(__APPLE__)
+		return buffer.st_mtimespec.tv_sec * 1000LL + buffer.st_mtimespec.tv_nsec / 1000000LL;
+	#elif (PLATFORM_POSIX_VERSION >= 200809L) && defined(st_mtime)
         return buffer.st_mtim.tv_sec * 1000LL + buffer.st_mtim.tv_nsec / 1000000LL;
 	#else
-		return buffer.st_mtime * 1000LL + buffer.st_mtim.tv_nsec / 1000000LL;
+		return buffer.st_mtime * 1000LL;
 	#endif
 	}
 
