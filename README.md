@@ -69,7 +69,7 @@ external/       Third-party dependencies
 Platform targets deliberately select one implementation for each public backend. This keeps PC, PS2, and Wii implementations from accidentally entering the same link target.
 
 ### Desktop
-To start, Clone the repository
+To start, Clone the repository, and...
 
 Make Sure to have `sdl2_net` and `ninja` to avoid errors!
 

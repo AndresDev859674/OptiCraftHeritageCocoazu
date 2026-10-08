@@ -5,70 +5,55 @@ permissions:
   actions: read
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Build"]
+    branches: [main]
+    types: [completed]
 
 jobs:
-  # One matrix job per artifact produced by build.yml — same behaviour as
-  # separate jobs, without nineteen copy-pasted blocks.
+  create-release:
+    name: Create/Update Dev Release
+    runs-on: ubuntu-26.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Create or Update Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+        run: |
+          if gh release view dev-release --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit dev-release \
+              --title "Development Release" \
+              --notes "$COMMIT_MSG" \
+              --prerelease \
+              --repo "${{ github.repository }}"
+          else
+            gh release create dev-release \
+              --title "Development Release" \
+              --notes "$COMMIT_MSG" \
+              --prerelease \
+              --target main \
+              --repo "${{ github.repository }}"
+          fi
+
   deploy:
     name: Deploy ${{ matrix.platform }}
+    needs: create-release
     runs-on: ubuntu-26.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: PlayStation 2
-            artifact: opticraft-ps2
-            file: OptiCraft-ps2.tar.gz
-          - platform: Nintendo Wii
-            artifact: opticraft-wii
-            file: OptiCraft-wii.tar.gz
-          - platform: Windows x64 GCC
-            artifact: opticraft-windows-x64-gcc
-            file: OptiCraft-windows-x64-gcc.tar.gz
-          - platform: Windows x86_64-v3 GCC
-            artifact: opticraft-windows-x86_64-v3-gcc
-            file: OptiCraft-windows-x86_64-v3-gcc.tar.gz
-          - platform: Windows Zen 4 GCC
-            artifact: opticraft-windows-zen4-gcc
-            file: OptiCraft-windows-zen4-gcc.tar.gz
-          - platform: Windows Zen 3 GCC
-            artifact: opticraft-windows-zen3-gcc
-            file: OptiCraft-windows-zen3-gcc.tar.gz
-          - platform: Windows x86 GCC
-            artifact: opticraft-windows-x86-gcc
-            file: OptiCraft-windows-x86-gcc.tar.gz
-          - platform: Windows x86 Legacy GCC
-            artifact: opticraft-windows-x86-gcc-legacy
-            file: OptiCraft-windows-x86-gcc-legacy.tar.gz
-          - platform: Windows ARM64 GCC
-            artifact: opticraft-windows-arm64-gcc
-            file: OptiCraft-windows-arm64-gcc.tar.gz
-          - platform: Windows x64 MSVC
-            artifact: opticraft-windows-x64-msvc
-            file: OptiCraft-windows-x64-msvc.tar.gz
+          - platform: Windows x64 (MinGW)
+            artifact: opticraft-windows-x64
+            file: OptiCraft-windows-x64.tar.gz
           - platform: Linux x64 GCC
             artifact: opticraft-linux-x64-gcc
             file: OptiCraft-linux-x64-gcc.tar.gz
-          - platform: Linux ARM64 GCC
-            artifact: opticraft-linux-arm64-gcc
-            file: OptiCraft-linux-arm64-gcc.tar.gz
-          - platform: Linux ARMv7 GCC
-            artifact: opticraft-linux-armv7-gcc
-            file: OptiCraft-linux-armv7-gcc.tar.gz
-          - platform: Linux x86_64-v3 GCC
-            artifact: opticraft-linux-x86_64-v3-gcc
-            file: OptiCraft-linux-x86_64-v3-gcc.tar.gz
-          - platform: Linux Zen 4 GCC
-            artifact: opticraft-linux-zen4-gcc
-            file: OptiCraft-linux-zen4-gcc.tar.gz
-          - platform: Linux Zen 3 GCC
-            artifact: opticraft-linux-zen3-gcc
-            file: OptiCraft-linux-zen3-gcc.tar.gz
-          - platform: Linux x86 GCC
-            artifact: opticraft-linux-x86-gcc
-            file: OptiCraft-linux-x86-gcc.tar.gz
           - platform: macOS ARM64 Clang
             artifact: opticraft-macos-arm64-clang
             file: OptiCraft-macos-arm64-clang.tar.gz
@@ -81,17 +66,14 @@ jobs:
         with:
           github_token: ${{ github.token }}
           workflow: build.yml
-          workflow_conclusion: success
-          # Only runs of main: without this, "latest successful run" could be
-          # an open PR's run and the release would ship unmerged binaries.
-          branch: main
+          run_id: ${{ github.event.workflow_run.id }}
           name: ${{ matrix.artifact }}
 
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
+          gh release upload dev-release \
             "${{ matrix.file }}" \
             --repo "${{ github.repository }}" \
             --clobber
