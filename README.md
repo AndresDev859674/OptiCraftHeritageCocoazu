@@ -73,13 +73,9 @@ To start, Clone the repository
 
 Make Sure to have `sdl2_net` and `ninja` to avoid errors!
 
-Now, Go to cd from the repo and clone the SDL_net.
+if you are in Linux make sure  that have the `linux-headers` and `linux-api-headers`!
 
-```text
-   rm -rf external/SDL_net
-   git clone https://github.com/AndresDev859674/SDL_net-heritage.git external/SDL_net
-```
-Now, Start Compiling
+Now, Go to the repo folder and Compile it....
 
 Debug Build :
 ```text
