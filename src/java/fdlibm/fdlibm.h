@@ -72,7 +72,9 @@ extern  _LIB_VERSION_TYPE  _LIB_VERSION;
 #define _XOPEN_ fdlibm_xopen
 #define _POSIX_ fdlibm_posix
 
-#ifndef __HAIKU__
+#if defined(__APPLE__)
+struct exception;
+#elif !defined(__HAIKU__)
 struct exception {
 	int type;
 	char *name;

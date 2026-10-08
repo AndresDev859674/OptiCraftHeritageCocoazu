@@ -37,11 +37,10 @@ jobs:
             echo "SDL_net already present"
           fi
 
-      - name: Install build tools, MinGW & SDL2
+      - name: Install build tools & MinGW
         run: |
           sudo apt update
-          sudo apt install -y ninja-build ccache mingw-w64 \
-            libsdl2-dev libsdl2-net-dev
+          sudo apt install -y ninja-build ccache mingw-w64
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -63,6 +62,10 @@ jobs:
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -72,7 +75,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Debug/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp build/win64/OptiCraft.exe dist/OptiCraft-windows-x64.exe
+          cp bin/Debug/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp build/win64/OptiCraft.exe dist/OptiCraft-windows-x64.exe || cp bin/Release/OptiCraft.exe dist/OptiCraft-windows-x64.exe
           tar -C dist -czf OptiCraft-windows-x64.tar.gz OptiCraft-windows-x64.exe
 
       - uses: actions/upload-artifact@v7
@@ -133,6 +136,7 @@ jobs:
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
             --preset linux-release \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -142,7 +146,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-linux-x64-gcc || cp build/linux/OptiCraft dist/OptiCraft-linux-x64-gcc
+          cp bin/Release/OptiCraft dist/OptiCraft-linux-x64-gcc || cp build/linux/OptiCraft dist/OptiCraft-linux-x64-gcc || cp bin/Debug/OptiCraft dist/OptiCraft-linux-x64-gcc
           tar -C dist -czf OptiCraft-linux-x64-gcc.tar.gz OptiCraft-linux-x64-gcc
 
       - uses: actions/upload-artifact@v7
@@ -219,6 +223,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.target }} \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -228,7 +233,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp bin/Release/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp build/macos/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang
+          cp bin/Release/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp build/macos/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang || cp bin/Debug/OptiCraft dist/OptiCraft-macos-${{ matrix.suffix }}-clang
           tar -C dist -czf OptiCraft-macos-${{ matrix.suffix }}-clang.tar.gz OptiCraft-macos-${{ matrix.suffix }}-clang
 
       - uses: actions/upload-artifact@v7
