@@ -69,7 +69,17 @@ external/       Third-party dependencies
 Platform targets deliberately select one implementation for each public backend. This keeps PC, PS2, and Wii implementations from accidentally entering the same link target.
 
 ### Desktop
-Make Sure to have `sdl2_net` to avoid errors!
+To start, Clone the repository
+
+Make Sure to have `sdl2_net` and `ninja` to avoid errors!
+
+Now, Go to cd from the repo and clone the SDL_net.
+
+```text
+   rm -rf external/SDL_net
+   git clone https://github.com/AndresDev859674/SDL_net-heritage.git external/SDL_net
+```
+Now, Start Compiling
 
 Debug Build :
 ```text
