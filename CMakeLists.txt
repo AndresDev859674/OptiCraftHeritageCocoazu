@@ -177,21 +177,14 @@ if(PKG_CONFIG_FOUND)
     pkg_check_modules(SDL2NET QUIET SDL2_net)
 endif()
 
-if(NOT SDL2NET_FOUND)
+# SDL_net links against the SDL2 static target created above, so it must be
+# added afterwards. Force a static build and skip its samples; CMP0077 lets the
+# normal variable override SDL_net's own option() defaults.
+if(NOT SDL2NET_FOUND AND NOT TARGET SDL2_net)
     set(BUILD_SHARED_LIBS OFF)
     set(SDL2NET_SAMPLES OFF CACHE BOOL "" FORCE)
     add_subdirectory(external/SDL_net EXCLUDE_FROM_ALL)
 endif()
-
-find_package(OpenGL REQUIRED)
-find_package(Threads REQUIRED)
-
-# SDL_net links against the SDL2 static target created above, so it must be
-# added afterwards. Force a static build and skip its samples; CMP0077 lets the
-# normal variable override SDL_net's own option() defaults.
-set(BUILD_SHARED_LIBS OFF)
-set(SDL2NET_SAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(external/SDL_net EXCLUDE_FROM_ALL)
 
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
@@ -234,9 +227,6 @@ set_property(CACHE MC_LOG_LEVEL PROPERTY STRINGS 0 1 2 3)
 # consumed by the platform tuning layer. Keep it separate from console-low: the
 # Legacy PC build must not inherit world-generation or bounded-world policies.
 option(PC_LEGACY_BUILD "Enable the 32-bit low-end PC renderer/profile" OFF)
-# if(PC_LEGACY_BUILD AND NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
-#     message(FATAL_ERROR "PC_LEGACY_BUILD requires a 32-bit toolchain; use the gcc32-legacy-release preset")
-# endif()
 
 # Recolet sources
 file(GLOB_RECURSE ALL_GAME_SOURCES "src/*.cpp" "src/*.c")
@@ -331,7 +321,8 @@ if(WIN32)
         NOMINMAX
         WIN32_LEAN_AND_MEAN
     )
-    target_link_libraries(OptiCraft PRIVATE shell32 psapi d3d9)
+    # Win32 & MinGW System Dependencies
+    target_link_libraries(OptiCraft PRIVATE shell32 psapi d3d9 ws2_32 iphlpapi)
 
     if(MSVC)
         target_compile_options(OptiCraft PRIVATE /MP /bigobj /utf-8)
@@ -358,6 +349,8 @@ if(WIN32)
         endif()
         target_link_options(OptiCraft PRIVATE
             -static
+            -static-libgcc
+            -static-libstdc++
             -fno-ident
             -fno-asynchronous-unwind-tables
             -fvisibility=hidden
@@ -393,3 +386,4 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source Files"
     FILES ${OPTICRAFT_COMMON_SOURCES} ${OPTICRAFT_HEADERS}
 )
 source_group("Third Party\\minizip" FILES ${OPTICRAFT_MINIZIP_SOURCES})
+```[cite: 3]

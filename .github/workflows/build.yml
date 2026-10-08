@@ -61,6 +61,8 @@ jobs:
             -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
+            -DSDL2NET_SAMPLES=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
             -DCMAKE_BUILD_TYPE=Debug \
             "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
             -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
@@ -75,7 +77,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          EXE_PATH=$(find . -type f -name "OptiCraft.exe" | head -n 1)
+          EXE_PATH=$(find build/win64 bin -type f -name "OptiCraft.exe" -not -path "*/CMakeFiles/*" | head -n 1)
           cp "$EXE_PATH" dist/OptiCraft-windows-x64.exe
           tar -C dist -czf OptiCraft-windows-x64.tar.gz OptiCraft-windows-x64.exe
 
