@@ -20,12 +20,12 @@ This repository is not intended to be a line-for-line source translation. The ru
 <table>
   <tr>
     <td width="50%" align="center">
-      <img width="859" height="484" alt="image" src="https://github.com/user-attachments/assets/e97e4dfd-9539-42a2-adb3-cf7a141254e0" />
+      <img width="859" height="484" alt="image" src="https://raw.githubusercontent.com/AndresDev859674/OptiCraftHeritageCocoazu/refs/heads/main/images/cocoazu_20260922_122915.png" />
       <br />
       <sub><em>Main Menu</em></sub>
     </td>
     <td width="50%" align="center">
-      <img width="860" height="486" alt="image" src="https://github.com/user-attachments/assets/e1554a9f-8f18-415f-93d8-05e3d5c5dc33" />
+      <img width="860" height="486" alt="image" src="https://raw.githubusercontent.com/AndresDev859674/OptiCraftHeritageCocoazu/refs/heads/main/images/cocoazu_20260922_123204.png" />
       <br />
       <sub><em>Video Options in Legacy UI (Optifine Options here!)</em></sub>
     </td>
@@ -98,7 +98,7 @@ Or else, Will not run!
 
 ## Roadmap
 - [x] Open the Survival inventory with `R` in Creative Mode..
-- [ ] Unlock the Chat for commands and more in singleplayer...
+- [x] Unlock the Chat for commands and more in singleplayer...
 - [ ] Add chainmail item to craft its type of armor.
 - [ ] Improve Optifine, and smarter integration of optimization of chunks
       
