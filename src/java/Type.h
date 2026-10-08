@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <cmath>
 
 typedef std::int8_t byte_t;
 typedef std::uint8_t ubyte_t;
@@ -27,10 +28,12 @@ typedef long long          long_t;
 typedef unsigned long long ulong_t;
 #endif
 
-// Keep the Java primitive aliases available without relying on <cmath>
-// leaking its C float_t/double_t typedefs into the global namespace.
+#ifndef float_t
 typedef float float_t;
-typedef double double_t;
+#endif
 
-// Java has only one bool type; some ports use bool_t for symmetry with int_t/long_t.
+#ifndef double_t
+typedef double double_t;
+#endif
+
 typedef bool bool_t;

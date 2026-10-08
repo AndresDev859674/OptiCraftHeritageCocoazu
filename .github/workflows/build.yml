@@ -234,7 +234,7 @@ jobs:
         if: always()
         run: ccache --show-stats
 
-  # ── Linux ARM64 / ARMhf GCC Cross-Compilation ────────────────────────
+# ── Linux ARM64 / ARMhf GCC Cross-Compilation ────────────────────────
   build-linux-arm-gcc:
     timeout-minutes: 45
     name: Linux ${{ matrix.arch }} GCC
@@ -245,10 +245,10 @@ jobs:
         include:
           - arch: arm64
             compiler_prefix: aarch64-linux-gnu
-            pkg_arch: arm64
+            sysroot_arch: aarch64-linux-gnu
           - arch: armhf
             compiler_prefix: arm-linux-gnueabihf
-            pkg_arch: armhf
+            sysroot_arch: arm-linux-gnueabihf
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -265,12 +265,12 @@ jobs:
             git -C external/SDL_net checkout FETCH_HEAD
           fi
 
-      - name: Install Toolchain & Cross Headers
+      - name: Install Cross Toolchain & X11 Headers
         run: |
-          sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
           sudo apt update
-          sudo apt install -y ninja-build ccache gcc-${{ matrix.compiler_prefix }} g++-${{ matrix.compiler_prefix }} \
-            libgl1-mesa-dev:${{ matrix.pkg_arch }} libx11-dev:${{ matrix.pkg_arch }} libasound2-dev:${{ matrix.pkg_arch }}
+          sudo apt install -y ninja-build ccache \
+            gcc-${{ matrix.compiler_prefix }} g++-${{ matrix.compiler_prefix }} \
+            libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libasound2-dev
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -291,6 +291,7 @@ jobs:
             -DCMAKE_C_COMPILER=${{ matrix.compiler_prefix }}-gcc \
             -DCMAKE_CXX_COMPILER=${{ matrix.compiler_prefix }}-g++ \
             -DSDL_PIPEWIRE=OFF \
+            -DSDL_X11=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
             "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
