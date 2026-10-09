@@ -8,9 +8,7 @@
 
 #include <iostream>
 #include <chrono>
-#include <locale>
 #include <mutex>
-#include <codecvt>
 #include "PacketCounter.h"
 #include "java/IOUtil.h"
 #include "Packet0KeepAlive.h"

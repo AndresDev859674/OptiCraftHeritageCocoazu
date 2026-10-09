@@ -1,8 +1,6 @@
-﻿#include "lwjgl/Keyboard.h"
+#include "lwjgl/Keyboard.h"
 
 #include <queue>
-#include <locale>
-#include <codecvt>
 
 #include "external/SDLException.h"
 
@@ -347,12 +345,10 @@ void pushEvent(const SDL_Event &e)
 	{
 		handleKey(keySDLToLWJGL(e.key.keysym.sym), e.key.repeat, e.key.state == SDL_PRESSED);
 	}
-	else
+	else if (e.type == SDL_TEXTINPUT)
 	{
-		// Iterate through unicode codepoints
-		std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
-		std::u32string utf32 = conv.from_bytes(e.text.text);
-		for (char32_t c : utf32)
+		// Iterate through unicode characters
+		for (char_t c : String::toUtf16(e.text.text))
 			handleCharacter(c);
 	}
 }

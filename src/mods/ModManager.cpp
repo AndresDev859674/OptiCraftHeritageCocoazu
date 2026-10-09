@@ -8,12 +8,13 @@
 // Built-in mods
 #include "toomanyitems/TooManyItemsMod.h"
 #include "reiminimap/ReiMinimapMod.h"
+#include "strongholdlocator/StrongholdLocatorMod.h"
 
 #include <cstdio>
 
 ModManager::ModManager()
-: mc(nullptr)
-, initialized(false)
+    : mc(nullptr)
+    , initialized(false)
 {
 }
 
@@ -35,6 +36,20 @@ void ModManager::init(Minecraft *mcInstance)
 
     mc = mcInstance;
     initialized = true;
+
+    // Built-in mods
+    if (getMod("toomanyitems") == nullptr)
+    {
+        registerMod(std::make_unique<TooManyItemsMod>());
+    }
+    if (getMod("reiminimap") == nullptr)
+    {
+        registerMod(std::make_unique<ReiMinimapMod>());
+    }
+    if (getMod("strongholdlocator") == nullptr)
+    {
+        registerMod(std::make_unique<StrongholdLocatorMod>());
+    }
 
     // Scan and load installed .ochpack packages from the persistent game mods directory
     scanAndLoadPacks();
@@ -146,6 +161,10 @@ void ModManager::scanAndLoadPacks()
         {
             newMod = std::make_unique<ReiMinimapMod>();
         }
+        else if (pack.id == "strongholdlocator")
+        {
+            newMod = std::make_unique<StrongholdLocatorMod>();
+        }
         else
         {
             newMod = std::make_unique<DynamicMod>(pack);
@@ -187,6 +206,7 @@ bool ModManager::installModPack(const std::string &sourcePath, std::string &outE
 
     std::string destPath = PlatformStorage::join(modsDir, info.fileName);
 
+    // Read source file data using OchPackReader for full optical disc & candidate support
     std::vector<unsigned char> data;
     if (!OchPackReader::readFileBytes(sourcePath, data))
     {
@@ -202,12 +222,14 @@ bool ModManager::installModPack(const std::string &sourcePath, std::string &outE
         return false;
     }
 
+    // Write to destination
     if (!PlatformStorage::writeFile(destPath, data.data(), data.size()))
     {
         outError = "Failed to write package to destination.";
         return false;
     }
 
+    // Update or register mod
     info.filePath = destPath;
     IMod *existing = getMod(info.id);
     if (existing != nullptr)
@@ -222,6 +244,8 @@ bool ModManager::installModPack(const std::string &sourcePath, std::string &outE
             newMod = std::make_unique<TooManyItemsMod>();
         else if (info.id == "reiminimap")
             newMod = std::make_unique<ReiMinimapMod>();
+        else if (info.id == "strongholdlocator")
+            newMod = std::make_unique<StrongholdLocatorMod>();
         else
             newMod = std::make_unique<DynamicMod>(info);
 

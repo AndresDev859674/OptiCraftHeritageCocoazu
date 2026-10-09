@@ -1,7 +1,6 @@
 #include "OchPackReader.h"
 #include "platform/Storage.h"
 #include "platform/Log.h"
-#include "platform/storage/PosixFileSystem.h"
 #include "unzip.h"
 
 #include <cstdio>

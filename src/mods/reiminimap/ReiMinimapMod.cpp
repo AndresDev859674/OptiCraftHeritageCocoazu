@@ -2,7 +2,7 @@
 #include "ReiMinimap.h"
 
 ReiMinimapMod::ReiMinimapMod()
-    : m_enabled(false)
+    : m_enabled(true)
 {
 }
 

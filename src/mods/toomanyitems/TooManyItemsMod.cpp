@@ -2,13 +2,20 @@
 #include "TooManyItems.h"
 
 TooManyItemsMod::TooManyItemsMod()
-    : m_enabled(false)
+    : m_enabled(true)
 {
+}
+
+void TooManyItemsMod::setEnabled(bool state)
+{
+    m_enabled = state;
+    TooManyItems::setEnabled(state);
 }
 
 void TooManyItemsMod::onInit(Minecraft *mc)
 {
     TooManyItems::init();
+    TooManyItems::setEnabled(m_enabled);
 }
 
 void TooManyItemsMod::onDrawContainer(GuiContainer *container, int_t mouseX, int_t mouseY)
