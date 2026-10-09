@@ -98,6 +98,9 @@ jobs:
           - platform: Windows x64 Generic (MinGW)
             artifact: opticraft-windows-x64-generic
             file: OptiCraft-windows-x64-generic.tar.gz
+          - platform: Windows x86_64-v3 (MinGW)
+            artifact: opticraft-windows-x86_64-v3
+            file: OptiCraft-windows-x86_64-v3.tar.gz
           - platform: Windows Zen 3 (MinGW)
             artifact: opticraft-windows-zen3
             file: OptiCraft-windows-zen3.tar.gz

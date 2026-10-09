@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 jobs:
-# ── Windows MinGW (x64 Generic, Zen 3, Zen 4) ────────────────────────
+  # ── Windows MinGW (x64 Generic, x86_64-v3, Zen 3, Zen 4) ─────────────
   build-windows-mingw:
     timeout-minutes: 45
     name: Windows ${{ matrix.name }} (MinGW)
@@ -26,6 +26,9 @@ jobs:
           - name: x64 Generic
             id: x64-generic
             cxx_flags: ""
+          - name: x86_64-v3
+            id: x86_64-v3
+            cxx_flags: "-march=x86-64-v3"
           - name: Zen 3
             id: zen3
             cxx_flags: "-march=znver3"
