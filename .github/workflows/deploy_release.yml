@@ -26,14 +26,23 @@ jobs:
           COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
         run: |
           SHORT_SHA=$(echo "$COMMIT_SHA" | cut -c1-7)
           BUILD_DATE=$(date -u +"%Y-%m-%d")
           BUILD_DATETIME=$(date -u +"%Y-%m-%d %H:%M UTC")
 
-          # Nombre dinamico de la release
           RELEASE_TITLE="Cocoazu-${BUILD_DATE}-${SHORT_SHA}"
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
+
+          PREV_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+
+          if [ -n "$PREV_SHA" ]; then
+            COMPARE_URL="${SERVER_URL}/${REPO}/compare/${PREV_SHA}...${COMMIT_SHA}"
+          else
+            COMPARE_URL="${SERVER_URL}/${REPO}/commit/${COMMIT_SHA}"
+          fi
 
           cat <<EOF > release_notes.md
           ## OptiCraft Heritage Edition Cocoazú - Development Build
@@ -42,18 +51,19 @@ jobs:
 
           ### Commit Information
           - **Branch:** \`$BRANCH\`
-          - **Commit Hash:** [\`$SHORT_SHA\`]($${{ github.server_url }}/$${{ github.repository }}/commit/$COMMIT_SHA)
-          - **Build Date:** $BUILD_DATETIME           - **Build Log:** [View Workflow Run]($${{ github.server_url }}/$${{ github.repository }}/actions/runs/$RUN_ID)
+          - **Commit Hash:** [\`$SHORT_SHA\`](${SERVER_URL}/${REPO}/commit/${COMMIT_SHA})
+          - **Build Date:** $BUILD_DATETIME
+          - **Build Log:** [View Workflow Run](${SERVER_URL}/${REPO}/actions/runs/${RUN_ID})
 
           # What's Changed
           - **Commit Message:**
             \`\`\`text
             $COMMIT_MSG
             \`\`\`
-          - **Comparing changes:** [Compare with previous commit]($${{ github.server_url }}/$${{ github.repository }}/commit/$COMMIT_SHA)
+          - **Comparing changes:** [Compare with previous commit](${COMPARE_URL})
 
           ---
-          > **Importante:** Debes descargar los recursos y el archivo comprimido (\`.tar.gz\`) correspondiente a tu sistema operativo y arquitectura desde la lista de assets a continuación.
+          > **Important:** You must download the game resources and the compressed archive (\`.tar.gz\`) corresponding to your operating system and architecture from the assets list below.
           EOF
 
       - name: Create or Update Release
