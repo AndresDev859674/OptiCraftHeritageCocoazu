@@ -75,7 +75,7 @@ Platform targets deliberately select one implementation for each public backend.
 To build the project from source, first clone the repository and navigate into the project directory:
 
 ```bash
-git clone [https://github.com/AndresDev859674/OptiCraftHeritageCocoazu.git](https://github.com/AndresDev859674/OptiCraftHeritageCocoazu.git)
+git clone https://github.com/AndresDev859674/OptiCraftHeritageCocoazu.git
 cd OptiCraftHeritageCocoazu
 
 ```
