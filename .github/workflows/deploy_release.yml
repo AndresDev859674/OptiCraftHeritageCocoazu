@@ -63,7 +63,7 @@ jobs:
           - **Comparing changes:** [Compare with previous commit](${COMPARE_URL})
 
           ---
-          > **Important:** You must download the game resources and the compressed archive (\`.tar.gz\`) corresponding to your operating system and architecture from the assets list below.
+          > **Important:** You need to download the game assets—that is, the compressed file. ([tar.gz](https://drive.google.com/uc?export=download&id=1AI4qjkCv9aW7dJD2_nwsiEslmdwhUVaK)) Extract all contents of the downloaded archive directly into the directory containing the compiled executable (bin/Debug/ or bin/Release/).
           EOF
 
       - name: Create or Update Release
