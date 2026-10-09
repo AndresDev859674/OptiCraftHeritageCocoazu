@@ -14,21 +14,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Windows MinGW (x64 & ARM64) ──────────────────────────────────────
+# ── Windows MinGW (x64 Generic, Zen 3, Zen 4) ────────────────────────
   build-windows-mingw:
     timeout-minutes: 45
-    name: Windows ${{ matrix.arch }} (MinGW)
+    name: Windows ${{ matrix.name }} (MinGW)
     runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: x64
-            compiler_prefix: x86_64-w64-mingw32
-            pkg_name: mingw-w64
-          - arch: arm64
-            compiler_prefix: aarch64-w64-mingw32
-            pkg_name: gcc-mingw-w64-aarch64 g++-mingw-w64-aarch64
+          - name: x64 Generic
+            id: x64-generic
+            cxx_flags: ""
+          - name: Zen 3
+            id: zen3
+            cxx_flags: "-march=znver3"
+          - name: Zen 4
+            id: zen4
+            cxx_flags: "-march=znver4"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -48,31 +51,32 @@ jobs:
       - name: Install build tools & MinGW
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build ccache ${{ matrix.pkg_name }}
+          sudo apt-get install -y ninja-build ccache mingw-w64
 
       - name: Cache ccache
         uses: actions/cache@v6
         with:
           path: ~/.cache/ccache
-          key: ccache-windows-${{ matrix.arch }}-${{ github.run_id }}
+          key: ccache-windows-${{ matrix.id }}-${{ github.run_id }}
           restore-keys: |
-            ccache-windows-${{ matrix.arch }}-
+            ccache-windows-${{ matrix.id }}-
 
       - name: Configure ccache
         run: ccache --max-size=2G && ccache --set-config=compression=true
 
       - name: Configure
         run: |
-          cmake -B build/win-${{ matrix.arch }} -G "Ninja" \
+          cmake -B build/win-${{ matrix.id }} -G "Ninja" \
             -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_C_COMPILER=${{ matrix.compiler_prefix }}-gcc \
-            -DCMAKE_CXX_COMPILER=${{ matrix.compiler_prefix }}-g++ \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DSDL2NET_SAMPLES=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DCMAKE_BUILD_TYPE=Debug \
-            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src" \
+            "-DCMAKE_CXX_FLAGS=-I$GITHUB_WORKSPACE/src/net/minecraft/src ${{ matrix.cxx_flags }}" \
+            "-DCMAKE_C_FLAGS=${{ matrix.cxx_flags }}" \
             -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
@@ -80,26 +84,26 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build/win-${{ matrix.arch }} -j$(nproc)
+        run: cmake --build build/win-${{ matrix.id }} -j$(nproc)
 
       - name: Package
         run: |
           mkdir -p dist
-          EXE_PATH=$(find build/win-${{ matrix.arch }} bin -type f -name "OptiCraft.exe" -not -path "*/CMakeFiles/*" | head -n 1)
-          cp "$EXE_PATH" dist/OptiCraft-windows-${{ matrix.arch }}.exe
-          tar -C dist -czf OptiCraft-windows-${{ matrix.arch }}.tar.gz OptiCraft-windows-${{ matrix.arch }}.exe
+          EXE_PATH=$(find build/win-${{ matrix.id }} bin -type f -name "OptiCraft.exe" -not -path "*/CMakeFiles/*" | head -n 1)
+          cp "$EXE_PATH" dist/OptiCraft-windows-${{ matrix.id }}.exe
+          tar -C dist -czf OptiCraft-windows-${{ matrix.id }}.tar.gz OptiCraft-windows-${{ matrix.id }}.exe
 
       - uses: actions/upload-artifact@v7
         with:
-          name: opticraft-windows-${{ matrix.arch }}
-          path: OptiCraft-windows-${{ matrix.arch }}.tar.gz
+          name: opticraft-windows-${{ matrix.id }}
+          path: OptiCraft-windows-${{ matrix.id }}.tar.gz
           if-no-files-found: error
 
       - name: ccache stats
         if: always()
         run: ccache --show-stats
 
-  # ── Linux x86 & x64 Microarchitectures (Generic, x86_64-v3, Zen 3, Zen 4, x86 32-bit) ──
+  # ── Linux x64 Microarchitectures (Generic, x86_64-v3, Zen 3, Zen 4) ──
   build-linux-x86-family:
     timeout-minutes: 45
     name: Linux ${{ matrix.name }} GCC
@@ -111,28 +115,15 @@ jobs:
           - name: x64 Generic
             id: x64-generic
             cxx_flags: ""
-            multilib: false
-            use_preset: false
-          - name: x86 32-bit
-            id: x86-32bit
-            cxx_flags: "-m32"
-            multilib: true
-            use_preset: true
           - name: x86_64-v3
             id: x86_64-v3
             cxx_flags: "-march=x86-64-v3"
-            multilib: false
-            use_preset: false
           - name: Zen 3
             id: zen3
             cxx_flags: "-march=znver3"
-            multilib: false
-            use_preset: false
           - name: Zen 4
             id: zen4
             cxx_flags: "-march=znver4"
-            multilib: false
-            use_preset: false
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -151,17 +142,9 @@ jobs:
 
       - name: Install build tools & dependencies
         run: |
-          if [ "${{ matrix.multilib }}" = "true" ]; then
-            sudo dpkg --add-architecture i386
-          fi
           sudo apt-get update
-          EXTRA_PKGS=""
-          if [ "${{ matrix.multilib }}" = "true" ]; then
-            EXTRA_PKGS="gcc-multilib g++-multilib libgl-dev:i386 libx11-dev:i386 libxext-dev:i386 libasound2-dev:i386"
-          else
-            EXTRA_PKGS="libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libasound2-dev"
-          fi
-          sudo apt-get install -y ninja-build ccache $EXTRA_PKGS
+          sudo apt-get install -y ninja-build ccache \
+            libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libasound2-dev
 
       - name: Cache ccache
         uses: actions/cache@v6
@@ -176,11 +159,7 @@ jobs:
 
       - name: Configure
         run: |
-          PRESET_ARGS=""
-          if [ "${{ matrix.use_preset }}" = "true" ]; then
-            PRESET_ARGS="--preset gcc32-legacy-release"
-          fi
-          cmake -B build/linux-${{ matrix.id }} -G "Ninja" $PRESET_ARGS \
+          cmake -B build/linux-${{ matrix.id }} -G "Ninja" \
             -DSDL_PIPEWIRE=OFF \
             -DPC_LEGACY_BUILD=ON \
             -DCMAKE_BUILD_TYPE=Debug \
