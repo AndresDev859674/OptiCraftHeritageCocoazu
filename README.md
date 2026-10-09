@@ -108,7 +108,7 @@ System dependencies and development headers required per platform:
 
 1. **Clone external dependencies (if not present):**
 ```bash
-git clone --depth 1 [https://github.com/libsdl-org/SDL_net.git](https://github.com/libsdl-org/SDL_net.git) external/SDL_net
+git clone --depth 1 https://github.com/AndresDev859674/SDL_net-heritage external/SDL_net
 
 ```
 
