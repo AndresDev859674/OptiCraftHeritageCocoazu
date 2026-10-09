@@ -28,25 +28,32 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           SHORT_SHA=$(echo "$COMMIT_SHA" | cut -c1-7)
-          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          BUILD_DATE=$(date -u +"%Y-%m-%d")
+          BUILD_DATETIME=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          # Nombre dinamico de la release
+          RELEASE_TITLE="Cocoazu-${BUILD_DATE}-${SHORT_SHA}"
+          echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
 
           cat <<EOF > release_notes.md
-          ## OptiCraft Heritage - Development Build
+          ## OptiCraft Heritage Edition Cocoazú - Development Build
 
           Automated development binaries compiled from the latest repository updates.
 
           ### Commit Information
           - **Branch:** \`$BRANCH\`
           - **Commit Hash:** [\`$SHORT_SHA\`]($${{ github.server_url }}/$${{ github.repository }}/commit/$COMMIT_SHA)
-          - **Build Date:** $BUILD_DATE           - **Build Log:** [View Workflow Run]($${{ github.server_url }}/$${{ github.repository }}/actions/runs/$RUN_ID)
+          - **Build Date:** $BUILD_DATETIME           - **Build Log:** [View Workflow Run]($${{ github.server_url }}/$${{ github.repository }}/actions/runs/$RUN_ID)
 
-          ### Commit Message
-          \`\`\`text
-          $COMMIT_MSG
-          \`\`\`
+          # What's Changed
+          - **Commit Message:**
+            \`\`\`text
+            $COMMIT_MSG
+            \`\`\`
+          - **Comparing changes:** [Compare with previous commit]($${{ github.server_url }}/$${{ github.repository }}/commit/$COMMIT_SHA)
 
           ---
-          *Note: These builds are generated automatically from ongoing development. Download the archive corresponding to your OS and architecture below.*
+          > **Importante:** Debes descargar los recursos y el archivo comprimido (\`.tar.gz\`) correspondiente a tu sistema operativo y arquitectura desde la lista de assets a continuación.
           EOF
 
       - name: Create or Update Release
@@ -55,13 +62,13 @@ jobs:
         run: |
           if gh release view dev-release --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release edit dev-release \
-              --title "OptiCraft Heritage (Dev Release)" \
+              --title "${{ env.RELEASE_TITLE }}" \
               --notes-file release_notes.md \
               --prerelease \
               --repo "${{ github.repository }}"
           else
             gh release create dev-release \
-              --title "OptiCraft Heritage (Dev Release)" \
+              --title "${{ env.RELEASE_TITLE }}" \
               --notes-file release_notes.md \
               --prerelease \
               --target main \
