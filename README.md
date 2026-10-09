@@ -68,43 +68,99 @@ external/       Third-party dependencies
 
 Platform targets deliberately select one implementation for each public backend. This keeps PC, PS2, and Wii implementations from accidentally entering the same link target.
 
-### Desktop
-To start, Clone the repository, and...
+### Building
+> [!IMPORTANT]
+> i dont have a Windows setup soooo, The Windows building are Cross-Compiling on linux
 
-Make Sure to have `sdl2_net` and `ninja` to avoid errors!
+To build the project from source, first clone the repository and navigate into the project directory:
 
-if you are in Linux make sure  that have the `linux-headers` and `linux-api-headers`!
+```bash
+git clone [https://github.com/AndresDev859674/OptiCraftHeritageCocoazu.git](https://github.com/AndresDev859674/OptiCraftHeritageCocoazu.git)
+cd OptiCraftHeritageCocoazu
 
-Now, Go to the repo folder and Compile it....
-
-Debug Build :
-```text
-  cmake -B build -G "Ninja" \
-          -DSDL_PIPEWIRE=OFF \
-          -DPC_LEGACY_BUILD=ON \
-          -DCMAKE_BUILD_TYPE=Debug \
-          --preset linux-debug \
-
-  cmake --build build -j$(nproc)
 ```
 
-Release Build :
-```text
-  cmake -B build -G "Ninja" \
-          -DSDL_PIPEWIRE=OFF \
-          -DPC_LEGACY_BUILD=ON \
-          -DCMAKE_BUILD_TYPE=Debug \
-          --preset linux-release \
+#### Required Dependencies
 
-  cmake --build build -j$(nproc)
+System dependencies and development headers required per platform:
+
+**Linux (Debian/Ubuntu/Arch):**
+* Compiler: `gcc` and `g++` (C++17 support required).
+* Build System: `cmake` (3.21 or higher) and `ninja`.
+* Headers: `linux-headers`, `linux-api-headers`.
+* Development Libraries: `libgl-dev`, `libx11-dev`, `libxext-dev`, `libxrandr-dev`, `libxcursor-dev`, `libxi-dev`, `libasound2-dev`, `libsdl2-dev`, and `libsdl2-net-dev`.
+
+
+**macOS (Intel & Apple Silicon):**
+* Tools: Xcode Command Line Tools (`xcode-select --install`).
+* Homebrew Packages: `brew install cmake ninja ccache sdl2 sdl2_net`.
+
+
+**Windows (MinGW Cross-Compilation on Linux):**
+* Toolchain: `mingw-w64` (`x86_64-w64-mingw32-gcc` / `x86_64-w64-mingw32-g++`).
+* Build Tools: `cmake` and `ninja`.
+
+
+
+---
+
+#### Compilation Steps
+
+1. **Clone external dependencies (if not present):**
+```bash
+git clone --depth 1 [https://github.com/libsdl-org/SDL_net.git](https://github.com/libsdl-org/SDL_net.git) external/SDL_net
+
 ```
 
-[Then, The bin folder and Debug, Download and Put all in the / of the Debug folder...](https://drive.google.com/uc?export=download&id=1AI4qjkCv9aW7dJD2_nwsiEslmdwhUVaK)
-Or else, Will not run!
+
+2. **Configure and Build:**
+* **Debug Build:**
+```bash
+cmake -B build -G "Ninja" \
+  -DSDL_PIPEWIRE=OFF \
+  -DPC_LEGACY_BUILD=ON \
+  -DCMAKE_BUILD_TYPE=Debug \
+  --preset linux-debug
+
+cmake --build build -j$(nproc)
+
+```
+
+
+* **Release Build:**
+```bash
+cmake -B build -G "Ninja" \
+  -DSDL_PIPEWIRE=OFF \
+  -DPC_LEGACY_BUILD=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  --preset linux-release
+
+cmake --build build -j$(nproc)
+
+```
+
+
+
+
+
+---
+
+#### Game Assets Installation
+
+After a successful compilation, the output binary will be located inside the `bin/Debug/` or `bin/Release/` directory.
+
+* Download the required game resources package:
+[Download Game Resources](https://drive.google.com/uc?export=download&id=1AI4qjkCv9aW7dJD2_nwsiEslmdwhUVaK)
+* Extract all contents of the downloaded archive directly into the directory containing the compiled executable (`bin/Debug/` or `bin/Release/`).
+
+Running the binary without placing the assets in the root executable directory will result in missing texture and audio file errors upon startup.
 
 ## Roadmap
 - [x] Open the Survival inventory with `R` in Creative Mode..
 - [x] Unlock the Chat for commands and more in singleplayer...
+- [x] Optimize F3
+- [x] Spectator and Noclip added
+- [ ] Focus on Integration (To Focus the CPU or GPU) and CUDA support
 - [ ] Add chainmail item to craft its type of armor.
 - [ ] Improve Optifine, and smarter integration of optimization of chunks
       
